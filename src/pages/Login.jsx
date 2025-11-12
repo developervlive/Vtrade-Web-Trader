@@ -38,7 +38,7 @@ const Login = () => {
             className="text-3xl font-bold bg-gradient-to-r from-[#00E1A1] to-[#00FF66] bg-clip-text text-transparent 
                hover:from-[#00CC8A] hover:to-[#00E659] transition-all duration-500 ease-in-out cursor-pointer"
           >
-            Digital Brains
+            V Trade
           </h1>
         </div>
 
