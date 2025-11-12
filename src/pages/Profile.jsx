@@ -684,17 +684,20 @@ export default function Profile() {
       )}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex gap-4 sm:gap-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex gap-4 sm:gap-6 md:items-start">
         {/* Sidebar */}
         <aside
           className={`
-          fixed md:static z-40 top-[56px] left-0 h-[calc(100dvh-56px)] md:h-auto w-[280px] sm:w-[300px] md:w-[260px] 
-          transition-transform duration-300 ease-in-out bg-[#1a1b2e] border border-[#2d3150] rounded-2xl p-3 md:p-4 
-          backdrop-blur-xl shadow-2xl shadow-black/40
-          ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-          }
-        `}
+            fixed md:sticky z-40 top-[56px] left-0 h-[calc(100dvh-56px)] md:h-auto w-[280px] sm:w-[300px] md:w-[260px] 
+            transition-transform duration-300 ease-in-out bg-[#1a1b2e] border border-[#2d3150] rounded-2xl p-3 md:p-4 
+            backdrop-blur-xl shadow-2xl shadow-black/40 overflow-y-auto md:overflow-visible
+            ${
+              sidebarOpen
+                ? "translate-x-0"
+                : "-translate-x-full md:translate-x-0"
+            }
+            md:top-4 md:self-start
+          `}
         >
           {/* Profile quick glance */}
           <div className="mb-4 p-3 rounded-xl bg-[#252841] border border-[#2d3150]">
