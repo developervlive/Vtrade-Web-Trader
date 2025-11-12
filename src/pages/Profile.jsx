@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "./Logo-vtrade.png";
 import {
@@ -24,12 +24,13 @@ const chip = (v) =>
     </span>
   );
 
-// ChartLine component (updated colors)
+// ChartLine component
 function ChartLine({ data, height = 200 }) {
   const formattedData = data.map((point, i) => ({
     ...point,
     label: i === 0 ? "Start" : i === data.length - 1 ? "Current" : `T${i}`,
   }));
+
   return (
     <div className="w-full h-[200px] bg-[#1a1b2e] rounded-xl border border-[#2d3150] shadow-lg p-2 transition-all">
       <ResponsiveContainer width="100%" height={height}>
@@ -94,6 +95,7 @@ const Pie = ({ items, size = 150 }) => {
     "#f97316",
     "#60a5fa",
   ];
+
   return (
     <svg width={size} height={size} viewBox="0 0 42 42" className="mx-auto">
       {items.map((it, idx) => {
@@ -121,19 +123,97 @@ const Pie = ({ items, size = 150 }) => {
   );
 };
 
-const Card = ({ title, children, right }) => (
-  <div className="bg-[#1a1b2e] rounded-2xl border border-[#2d3150] shadow-xl shadow-black/30 overflow-hidden mb-6">
+// Card component with responsive padding
+const Card = ({ title, children, right, className = "" }) => (
+  <div
+    className={`bg-[#1a1b2e] rounded-2xl border border-[#2d3150] shadow-xl shadow-black/30 overflow-hidden mb-6 ${className}`}
+  >
     <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-[#2d3150] bg-gradient-to-r from-[#252841] to-[#1a1b2e]">
-      <h3 className="text-white font-semibold tracking-wide">{title}</h3>
+      <h3 className="text-white font-semibold tracking-wide text-sm md:text-base">
+        {title}
+      </h3>
       {right}
     </div>
-    <div className="p-4 md:p-6">{children}</div>
+    <div className="p-3 md:p-4 lg:p-6">{children}</div>
   </div>
 );
 
+// Responsive Table Component
+const ResponsiveTable = ({ data, columns, onRowClick, className = "" }) => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  if (isMobile) {
+    return (
+      <div className={`space-y-3 ${className}`}>
+        {data.map((row, index) => (
+          <div
+            key={row.id || index}
+            className="bg-[#252841] rounded-lg border border-[#2d3150] p-4 hover:border-[#00ff9d]/30 transition-colors cursor-pointer"
+            onClick={() => onRowClick?.(row)}
+          >
+            {columns.map((col) => (
+              <div
+                key={col.key}
+                className="flex justify-between items-center py-2 border-b border-[#2d3150]/50 last:border-0"
+              >
+                <span className="text-[#6b7a99] text-sm">{col.header}:</span>
+                <span className="text-white text-sm font-medium">
+                  {col.render ? col.render(row[col.key], row) : row[col.key]}
+                </span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`overflow-x-auto ${className}`}>
+      <table className="min-w-full text-sm table-auto">
+        <thead>
+          <tr className="bg-[#252841] text-[#6b7a99] text-left">
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                className="py-3 px-4 font-medium text-xs md:text-sm"
+              >
+                {col.header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row, index) => (
+            <tr
+              key={row.id || index}
+              className="border-b border-[#2d3150] hover:bg-[#252841] cursor-pointer transition-colors"
+              onClick={() => onRowClick?.(row)}
+            >
+              {columns.map((col) => (
+                <td key={col.key} className="py-3 px-4 text-xs md:text-sm">
+                  {col.render ? col.render(row[col.key], row) : row[col.key]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 export default function Profile() {
   const navigate = useNavigate();
-  // Data (use your mock/sample data as in previous code)
+
+  // Mock data
   const user = {
     id: "2143019683",
     name: "Asif Shah",
@@ -150,6 +230,7 @@ export default function Profile() {
     leverage: "1:50",
     plan: "Prime",
   };
+
   const deposits = [
     {
       id: "d1",
@@ -173,6 +254,7 @@ export default function Profile() {
       status: "Pending",
     },
   ];
+
   const withdrawals = [
     {
       id: "w1",
@@ -182,6 +264,7 @@ export default function Profile() {
       status: "Processing",
     },
   ];
+
   const openPositions = [
     {
       id: "P-10021",
@@ -220,6 +303,7 @@ export default function Profile() {
       fee: 0.9,
     },
   ];
+
   const workingOrders = [
     {
       id: "O-30011",
@@ -240,6 +324,7 @@ export default function Profile() {
       status: "Working",
     },
   ];
+
   const tradeHistory = [
     {
       id: "T-90001",
@@ -277,31 +362,8 @@ export default function Profile() {
       opened: "2025-08-13 10:00",
       closed: "2025-08-13 11:40",
     },
-    {
-      id: "T-90004",
-      symbol: "MSFT",
-      side: "Sell",
-      qty: 6,
-      open: 523.1,
-      close: 521.2,
-      pnl: 11.4,
-      fee: 0.8,
-      opened: "2025-08-13 12:00",
-      closed: "2025-08-13 12:50",
-    },
-    {
-      id: "T-90005",
-      symbol: "AMZN",
-      side: "Buy",
-      qty: 2,
-      open: 226.5,
-      close: 225.5,
-      pnl: -2.0,
-      fee: 0.4,
-      opened: "2025-08-13 13:10",
-      closed: "2025-08-13 13:44",
-    },
   ];
+
   const watchlist = [
     { symbol: "AAPL", price: 231.44, change: -0.81 },
     { symbol: "MSFT", price: 524.41, change: 0.74 },
@@ -309,7 +371,8 @@ export default function Profile() {
     { symbol: "TSLA", price: 336.55, change: -0.83 },
     { symbol: "AMZN", price: 229.27, change: 2.1 },
   ];
-  // KPIs
+
+  // KPIs calculations
   const equityBase = 5000;
   const realizedPnl = useMemo(
     () => tradeHistory.reduce((s, t) => s + t.pnl, 0),
@@ -321,22 +384,30 @@ export default function Profile() {
       openPositions.reduce((s, p) => s + p.fee, 0),
     [tradeHistory, openPositions]
   );
-  const unrealizedPnl = useMemo(() => {
-    return openPositions.reduce((s, p) => {
-      const diff = (p.side === "Buy" ? p.mark - p.avg : p.avg - p.mark) * p.qty;
-      return s + diff;
-    }, 0);
-  }, [openPositions]);
+  const unrealizedPnl = useMemo(
+    () =>
+      openPositions.reduce(
+        (s, p) =>
+          s + (p.side === "Buy" ? p.mark - p.avg : p.avg - p.mark) * p.qty,
+        0
+      ),
+    [openPositions]
+  );
   const totalEquity = useMemo(
     () => equityBase + realizedPnl + unrealizedPnl - fees,
     [equityBase, realizedPnl, unrealizedPnl, fees]
   );
-  const winRate = useMemo(() => {
-    const wins = tradeHistory.filter((t) => t.pnl > 0).length;
-    return tradeHistory.length
-      ? Math.round((wins / tradeHistory.length) * 100)
-      : 0;
-  }, [tradeHistory]);
+  const winRate = useMemo(
+    () =>
+      tradeHistory.length
+        ? Math.round(
+            (tradeHistory.filter((t) => t.pnl > 0).length /
+              tradeHistory.length) *
+              100
+          )
+        : 0,
+    [tradeHistory]
+  );
   const grossProfit = tradeHistory
     .filter((t) => t.pnl > 0)
     .reduce((s, t) => s + t.pnl, 0);
@@ -373,12 +444,24 @@ export default function Profile() {
       pct: (v / total) * 100,
     }));
   }, [openPositions]);
-  // Controls
+
+  // State management
   const [tab, setTab] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [onlyWins, setOnlyWins] = useState(false);
   const [showTrade, setShowTrade] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Responsive check
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Filter trades
   const tradesFiltered = useMemo(() => {
     return tradeHistory.filter((t) => {
       const ok = `${t.id} ${t.symbol} ${t.side}`
@@ -388,7 +471,8 @@ export default function Profile() {
       return ok && win;
     });
   }, [tradeHistory, search, onlyWins]);
-  // Sidebar icons
+
+  // Menu icons
   const Icon = {
     dashboard: (cls = "w-5 h-5") => (
       <svg className={cls} viewBox="0 0 24 24" fill="none">
@@ -467,6 +551,7 @@ export default function Profile() {
       </svg>
     ),
   };
+
   const MENU = [
     { key: "overview", label: "Dashboard", icon: Icon.dashboard },
     { key: "positions", label: "Positions", icon: Icon.positions },
@@ -478,12 +563,62 @@ export default function Profile() {
     { key: "watch", label: "Watchlist", icon: Icon.watch },
   ];
 
+  // Table columns configuration
+  const positionColumns = [
+    { key: "symbol", header: "Symbol" },
+    { key: "side", header: "Side" },
+    { key: "qty", header: "Qty" },
+    { key: "avg", header: "Avg", render: (val) => fmt(val) },
+    { key: "mark", header: "Mark", render: (val) => fmt(val) },
+    {
+      key: "unrealized",
+      header: "Unrealized",
+      render: (_, row) => {
+        const unreal =
+          (row.side === "Buy" ? row.mark - row.avg : row.avg - row.mark) *
+          row.qty;
+        return chip(unreal);
+      },
+    },
+    { key: "sl", header: "SL", render: (val) => fmt(val) },
+    { key: "tp", header: "TP", render: (val) => fmt(val) },
+    { key: "opened", header: "Opened" },
+  ];
+
+  const orderColumns = [
+    { key: "symbol", header: "Symbol" },
+    { key: "side", header: "Side" },
+    { key: "qty", header: "Qty" },
+    { key: "price", header: "Price", render: (val) => fmt(val) },
+    { key: "placed", header: "Placed" },
+    { key: "status", header: "Status" },
+  ];
+
+  const historyColumns = [
+    { key: "symbol", header: "Symbol" },
+    { key: "side", header: "Side" },
+    { key: "qty", header: "Qty" },
+    { key: "open", header: "Open", render: (val) => fmt(val) },
+    { key: "close", header: "Close", render: (val) => fmt(val) },
+    { key: "pnl", header: "P&L", render: (val) => chip(val) },
+    { key: "fee", header: "Fee", render: (val) => fmt(val) },
+    { key: "opened", header: "Opened" },
+    { key: "closed", header: "Closed" },
+  ];
+
+  const fundsColumns = [
+    { key: "date", header: "Date" },
+    { key: "amount", header: "Amount", render: (val) => fmt(val) },
+    { key: "method", header: "Method" },
+    { key: "status", header: "Status" },
+  ];
+
   return (
     <div className="min-h-screen bg-[#0e0f1a] text-white">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-[#2d3150] bg-gradient-to-r from-[#1a1b2e] to-[#252841] backdrop-blur">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-50 border-b border-[#2d3150] bg-gradient-to-r from-[#1a1b2e] to-[#252841] backdrop-blur">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               className="md:hidden rounded-lg p-2 bg-[#252841] border border-[#2d3150]"
               onClick={() => setSidebarOpen((v) => !v)}
@@ -501,137 +636,152 @@ export default function Profile() {
             <img
               src={logo}
               alt="V Trade Logo"
-              className="w-10 h-10 object-contain bg-white rounded-full p-1"
+              className="w-8 h-8 sm:w-10 sm:h-10 object-contain bg-white rounded-full p-1"
             />
             <div>
-              <div className="font-semibold tracking-wide">V Trade</div>
+              <div className="font-semibold tracking-wide text-sm sm:text-base">
+                V Trade
+              </div>
               <div className="text-xs text-[#6b7a99]">Trader Profile</div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="hidden sm:block text-right mr-2">
               <div className="text-xs text-[#6b7a99]">Account</div>
               <div className="text-sm font-medium">{user.accountNo}</div>
             </div>
-            <div className="flex items-center gap-3 bg-[#252841] border border-[#2d3150] rounded-xl px-3 py-1.5">
+            <div className="flex items-center gap-2 sm:gap-3 bg-[#252841] border border-[#2d3150] rounded-xl px-2 sm:px-3 py-1.5">
               <img
                 src={user.avatar}
                 alt="avatar"
-                className="w-7 h-7 rounded-full"
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-full"
               />
-              <div className="text-sm">
-                <div className="font-medium">{user.name}</div>
+              <div className="hidden xs:block text-sm">
+                <div className="font-medium text-xs sm:text-sm">
+                  {user.name}
+                </div>
                 <div className="text-[11px] text-[#6b7a99]">
                   {user.rank} • {user.plan}
                 </div>
               </div>
               <button
                 onClick={() => navigate("/home")}
-                className="bg-gradient-to-r from-[#00E1A1] to-[#00FF66] rounded-lg font-sans font-medium px-2 py-1 text-black"
+                className="bg-gradient-to-r from-[#00E1A1] to-[#00FF66] rounded-lg font-sans font-medium px-2 sm:px-3 py-1 text-black text-xs sm:text-sm whitespace-nowrap"
               >
-                Back to Terminal
+                {isMobile ? "Terminal" : "Back to Terminal"}
               </button>
             </div>
           </div>
         </div>
       </header>
-      {/* Main */}
-      <div className="max-w-7xl mx-auto px-4 py-6 flex gap-6">
+
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex gap-4 sm:gap-6">
         {/* Sidebar */}
         <aside
-          className={`fixed md:static z-20 top-[56px] left-0 h-[calc(100dvh-56px)] md:h-auto w-[240px] md:w-[260px] transition-transform
-            ${
-              sidebarOpen
-                ? "translate-x-0"
-                : "-translate-x-full md:translate-x-0"
-            }`}
+          className={`
+          fixed md:static z-40 top-[56px] left-0 h-[calc(100dvh-56px)] md:h-auto w-[280px] sm:w-[300px] md:w-[260px] 
+          transition-transform duration-300 ease-in-out bg-[#1a1b2e] border border-[#2d3150] rounded-2xl p-3 md:p-4 
+          backdrop-blur-xl shadow-2xl shadow-black/40
+          ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          }
+        `}
         >
-          <div className="h-full md:h-auto bg-[#1a1b2e] border border-[#2d3150] rounded-2xl p-3 md:p-4 backdrop-blur-xl shadow-2xl shadow-black/40">
-            {/* Profile quick glance */}
-            <div className="mb-3 p-3 rounded-xl bg-[#252841] border border-[#2d3150]">
-              <div className="flex items-center gap-3">
-                <img
-                  src={user.avatar}
-                  className="w-9 h-9 rounded-lg ring-1 ring-[#00ff9d]/20"
-                  alt="avatar"
-                />
-                <div className="text-sm">
-                  <div className="font-semibold">{user.name}</div>
-                  <div className="text-[11px] text-[#6b7a99]">
-                    KYC: <span className="text-[#00ff9d]">{user.kyc}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-                <div className="bg-[#1a1b2e] rounded-lg px-2 py-1 border border-[#2d3150]">
-                  Leverage{" "}
-                  <span className="block text-white font-semibold">
-                    {user.leverage}
-                  </span>
-                </div>
-                <div className="bg-[#1a1b2e] rounded-lg px-2 py-1 border border-[#2d3150]">
-                  Currency{" "}
-                  <span className="block text-white font-semibold">
-                    {user.baseCurrency}
-                  </span>
+          {/* Profile quick glance */}
+          <div className="mb-4 p-3 rounded-xl bg-[#252841] border border-[#2d3150]">
+            <div className="flex items-center gap-3">
+              <img
+                src={user.avatar}
+                className="w-9 h-9 rounded-lg ring-1 ring-[#00ff9d]/20"
+                alt="avatar"
+              />
+              <div className="text-sm flex-1 min-w-0">
+                <div className="font-semibold truncate">{user.name}</div>
+                <div className="text-[11px] text-[#6b7a99]">
+                  KYC: <span className="text-[#00ff9d]">{user.kyc}</span>
                 </div>
               </div>
             </div>
-            {/* Menu */}
-            <nav className="space-y-1">
-              {MENU.map((m) => {
-                const active = tab === m.key;
-                return (
-                  <button
-                    key={m.key}
-                    onClick={() => {
-                      setTab(m.key);
-                      setSidebarOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition
-                      ${
-                        active
-                          ? "bg-[#00ff9d]/20 text-[#00ff9d] border border-[#00ff9d]/30 shadow-[inset_0_0_0_1px_rgba(0,255,157,0.3)]"
-                          : "text-[#6b7a99] hover:text-white hover:bg-[#252841] border border-transparent"
-                      }`}
-                  >
-                    {m.icon(
-                      "w-5 h-5 " +
-                        (active ? "text-[#00ff9d]" : "text-[#6b7a99]")
-                    )}
-                    <span className="truncate">{m.label}</span>
-                    {m.key === "overview" && (
-                      <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-[#00ff9d]/10 text-[#00ff9d]">
-                        Live
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-            {/* Equity mini widget */}
-            <div className="mt-3 p-3 rounded-xl bg-[#252841] border border-[#2d3150]">
-              <div className="text-[11px] text-[#6b7a99]">Equity</div>
-              <div className="text-lg font-semibold">{fmt(totalEquity)}</div>
-              <div className="mt-1 text-[11px]">
-                {chip(unrealizedPnl)}{" "}
-                <span className="text-[#6b7a99]">Unrealized</span>
+            <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+              <div className="bg-[#1a1b2e] rounded-lg px-2 py-1 border border-[#2d3150]">
+                Leverage{" "}
+                <span className="block text-white font-semibold">
+                  {user.leverage}
+                </span>
+              </div>
+              <div className="bg-[#1a1b2e] rounded-lg px-2 py-1 border border-[#2d3150]">
+                Currency{" "}
+                <span className="block text-white font-semibold">
+                  {user.baseCurrency}
+                </span>
               </div>
             </div>
           </div>
+
+          {/* Menu */}
+          <nav className="space-y-1 mb-4">
+            {MENU.map((m) => {
+              const active = tab === m.key;
+              return (
+                <button
+                  key={m.key}
+                  onClick={() => {
+                    setTab(m.key);
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200
+                    ${
+                      active
+                        ? "bg-[#00ff9d]/20 text-[#00ff9d] border border-[#00ff9d]/30 shadow-[inset_0_0_0_1px_rgba(0,255,157,0.3)]"
+                        : "text-[#6b7a99] hover:text-white hover:bg-[#252841] border border-transparent"
+                    }`}
+                >
+                  {m.icon(
+                    active ? "w-5 h-5 text-[#00ff9d]" : "w-5 h-5 text-[#6b7a99]"
+                  )}
+                  <span className="truncate flex-1 text-left">{m.label}</span>
+                  {m.key === "overview" && (
+                    <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-[#00ff9d]/10 text-[#00ff9d]">
+                      Live
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Equity mini widget */}
+          <div className="p-3 rounded-xl bg-[#252841] border border-[#2d3150]">
+            <div className="text-[11px] text-[#6b7a99]">Equity</div>
+            <div className="text-lg font-semibold">{fmt(totalEquity)}</div>
+            <div className="mt-1 text-[11px]">
+              {chip(unrealizedPnl)}{" "}
+              <span className="text-[#6b7a99]">Unrealized</span>
+            </div>
+          </div>
         </aside>
+
         {/* Main content */}
-        <main className="flex-1 pb-10">
-          {/* DASHBOARD TAB (MAIN OVERVIEW) */}
+        <main className="flex-1 min-w-0 pb-10">
+          {/* DASHBOARD TAB */}
           {tab === "overview" && (
             <>
               {/* Top Stats Row */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-4 shadow-lg">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-3 sm:p-4 shadow-lg col-span-2 lg:col-span-1">
                   <div className="text-xs text-[#6b7a99] uppercase tracking-wider">
                     Equity
                   </div>
-                  <div className="text-2xl font-bold text-white mt-1">
+                  <div className="text-xl sm:text-2xl font-bold text-white mt-1">
                     {fmt(totalEquity)}
                   </div>
                   <div className="mt-2 text-sm">
@@ -639,11 +789,11 @@ export default function Profile() {
                     <span className="text-[#6b7a99]">Unrealized</span>
                   </div>
                 </div>
-                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-4 shadow-lg">
+                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-3 sm:p-4 shadow-lg">
                   <div className="text-xs text-[#6b7a99] uppercase tracking-wider">
                     Realized P&L
                   </div>
-                  <div className="text-2xl font-bold text-white mt-1">
+                  <div className="text-xl sm:text-2xl font-bold text-white mt-1">
                     {fmt(realizedPnl)}
                   </div>
                   <div className="mt-2 text-sm">
@@ -651,11 +801,11 @@ export default function Profile() {
                     <span className="text-[#6b7a99]">All Time</span>
                   </div>
                 </div>
-                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-4 shadow-lg">
+                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-3 sm:p-4 shadow-lg">
                   <div className="text-xs text-[#6b7a99] uppercase tracking-wider">
                     Win Rate
                   </div>
-                  <div className="text-2xl font-bold text-white mt-1">
+                  <div className="text-xl sm:text-2xl font-bold text-white mt-1">
                     {winRate}%
                   </div>
                   <div className="mt-2 text-sm">
@@ -663,11 +813,11 @@ export default function Profile() {
                     {profitFactor}
                   </div>
                 </div>
-                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-4 shadow-lg">
+                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-3 sm:p-4 shadow-lg">
                   <div className="text-xs text-[#6b7a99] uppercase tracking-wider">
                     Risk/Reward
                   </div>
-                  <div className="text-2xl font-bold text-white mt-1">
+                  <div className="text-xl sm:text-2xl font-bold text-white mt-1">
                     1:2.5
                   </div>
                   <div className="mt-2 text-sm">
@@ -676,110 +826,108 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
+
               {/* Main Dashboard Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-6 shadow-lg lg:col-span-2">
-                  <div className="flex justify-between items-center mb-4">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-4 sm:p-6 shadow-lg xl:col-span-2">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                     <h3 className="text-lg font-semibold text-white">
                       Equity Curve
                     </h3>
-                    <div className="flex gap-2">
-                      <button className="px-3 py-1 text-xs bg-[#252841] rounded-lg">
-                        1D
-                      </button>
-                      <button className="px-3 py-1 text-xs bg-[#252841] rounded-lg">
-                        1W
-                      </button>
-                      <button className="px-3 py-1 text-xs bg-[#00ff9d] rounded-lg">
-                        1M
-                      </button>
-                      <button className="px-3 py-1 text-xs bg-[#252841] rounded-lg">
-                        1Y
-                      </button>
-                      <button className="px-3 py-1 text-xs bg-[#252841] rounded-lg">
-                        ALL
-                      </button>
+                    <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-2">
+                      {["1D", "1W", "1M", "1Y", "ALL"].map((period) => (
+                        <button
+                          key={period}
+                          className={`px-3 py-1 text-xs rounded-lg whitespace-nowrap ${
+                            period === "1M"
+                              ? "bg-[#00ff9d] text-black"
+                              : "bg-[#252841] text-white"
+                          }`}
+                        >
+                          {period}
+                        </button>
+                      ))}
                     </div>
                   </div>
                   <div className="h-64">
                     <ChartLine data={equityCurve} height={200} />
                   </div>
-                  <div className="flex justify-between mt-4 text-sm text-[#6b7a99]">
+                  <div className="flex flex-col sm:flex-row justify-between gap-2 mt-4 text-sm text-[#6b7a99]">
                     <span>Start: {fmt(equityBase)}</span>
                     <span>
-                      Current: {fmt(equityCurve[equityCurve.length - 1].y)}
+                      Current:{" "}
+                      {fmt(equityCurve[equityCurve.length - 1]?.y || 0)}
                     </span>
                     <span>
                       Change:{" "}
-                      {chip(equityCurve[equityCurve.length - 1].y - equityBase)}
+                      {chip(
+                        (equityCurve[equityCurve.length - 1]?.y || 0) -
+                          equityBase
+                      )}
                     </span>
                   </div>
                 </div>
-                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-6 shadow-lg">
+
+                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-4 sm:p-6 shadow-lg">
                   <h3 className="text-lg font-semibold text-white mb-4">
                     Account Summary
                   </h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[#6b7a99]">Account Type</span>
-                      <span className="font-medium">{user.rank}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[#6b7a99]">Leverage</span>
-                      <span className="font-medium">{user.leverage}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[#6b7a99]">Base Currency</span>
-                      <span className="font-medium">{user.baseCurrency}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[#6b7a99]">Open Positions</span>
-                      <span className="font-medium">
-                        {openPositions.length}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[#6b7a99]">Working Orders</span>
-                      <span className="font-medium">
-                        {workingOrders.length}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[#6b7a99]">Today&apos;s P&L</span>
-                      <span
-                        className={
-                          realizedPnl >= 0 ? "text-[#00ff9d]" : "text-[#ff3d9e]"
-                        }
+                  <div className="space-y-3 sm:space-y-4">
+                    {[
+                      ["Account Type", user.rank],
+                      ["Leverage", user.leverage],
+                      ["Base Currency", user.baseCurrency],
+                      ["Open Positions", openPositions.length],
+                      ["Working Orders", workingOrders.length],
+                      [
+                        "Today's P&L",
+                        {
+                          value: fmt(realizedPnl),
+                          color:
+                            realizedPnl >= 0
+                              ? "text-[#00ff9d]"
+                              : "text-[#ff3d9e]",
+                        },
+                      ],
+                    ].map(([label, value], index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center"
                       >
-                        {fmt(realizedPnl)}
-                      </span>
-                    </div>
+                        <span className="text-[#6b7a99] text-sm">{label}</span>
+                        <span
+                          className={`font-medium text-sm ${
+                            typeof value === "object" ? value.color : ""
+                          }`}
+                        >
+                          {typeof value === "object" ? value.value : value}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <button className="w-full mt-6 py-2 bg-gradient-to-r from-[#00E1A1] to-[#00FF66] hover:from-[#00CC8A] hover:to-[#00E659] rounded-lg font-medium transition">
+                  <button className="w-full mt-6 py-2 bg-gradient-to-r from-[#00E1A1] to-[#00FF66] hover:from-[#00CC8A] hover:to-[#00E659] rounded-lg font-medium transition text-sm sm:text-base">
                     Deposit Funds
                   </button>
                 </div>
               </div>
+
               {/* Bottom Dashboard Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-6 shadow-lg">
-                  <h3 className="text-lg font-semibold text-white mb-4">
-                    Portfolio Allocation
-                  </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card title="Portfolio Allocation">
                   {allocation.length ? (
-                    <div className="flex items-center">
-                      <div className="w-32 h-32 mr-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                      <div className="w-32 h-32">
                         <Pie items={allocation} size={120} />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0 w-full">
                         {allocation.map((a, i) => (
                           <div
                             key={i}
-                            className="flex items-center justify-between mb-2"
+                            className="flex items-center justify-between mb-3"
                           >
-                            <div className="flex items-center">
+                            <div className="flex items-center min-w-0 flex-1">
                               <div
-                                className="w-3 h-3 rounded-full mr-2"
+                                className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
                                 style={{
                                   backgroundColor: [
                                     "#00b8ff",
@@ -790,9 +938,11 @@ export default function Profile() {
                                   ][i % 5],
                                 }}
                               />
-                              <span className="font-medium">{a.symbol}</span>
+                              <span className="font-medium truncate">
+                                {a.symbol}
+                              </span>
                             </div>
-                            <span className="text-white">
+                            <span className="text-white ml-2 flex-shrink-0">
                               {a.pct.toFixed(1)}%
                             </span>
                           </div>
@@ -804,33 +954,37 @@ export default function Profile() {
                       No open positions
                     </div>
                   )}
-                </div>
-                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-6 shadow-lg">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-white">
-                      Watchlist
-                    </h3>
+                </Card>
+
+                <Card
+                  title="Watchlist"
+                  right={
                     <button className="text-xs text-[#00b8ff] hover:text-[#00ff9d]">
-                      + Add Symbol
+                      + Add
                     </button>
-                  </div>
+                  }
+                >
                   <div className="space-y-3">
                     {watchlist.map((w) => (
                       <div
                         key={w.symbol}
                         className="flex items-center justify-between p-3 hover:bg-[#252841] rounded-lg transition"
                       >
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-md bg-[#1a1b2e] flex items-center justify-center mr-3 font-semibold">
+                        <div className="flex items-center min-w-0 flex-1">
+                          <div className="w-8 h-8 rounded-md bg-[#1a1b2e] flex items-center justify-center mr-3 font-semibold flex-shrink-0">
                             {w.symbol[0]}
                           </div>
-                          <div>
-                            <div className="font-medium">{w.symbol}</div>
-                            <div className="text-xs text-[#6b7a99]">NASDAQ</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium truncate">
+                              {w.symbol}
+                            </div>
+                            <div className="text-xs text-[#6b7a99] truncate">
+                              NASDAQ
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-medium">
+                        <div className="text-right ml-3 flex-shrink-0">
+                          <div className="font-medium text-sm">
                             ${w.price.toFixed(2)}
                           </div>
                           <div
@@ -847,28 +1001,26 @@ export default function Profile() {
                       </div>
                     ))}
                   </div>
-                </div>
-                <div className="bg-[#1a1b2e] rounded-xl border border-[#2d3150] p-6 shadow-lg">
-                  <h3 className="text-lg font-semibold text-white mb-4">
-                    Recent Activity
-                  </h3>
+                </Card>
+
+                <Card title="Recent Activity">
                   <div className="space-y-4">
                     {tradeHistory.slice(0, 3).map((t) => (
                       <div
                         key={t.id}
-                        className="border-b border-[#2d3150] pb-3 last:border-0"
+                        className="border-b border-[#2d3150] pb-3 last:border-0 last:pb-0"
                       >
                         <div className="flex justify-between items-start">
-                          <div>
-                            <div className="font-medium">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm truncate">
                               {t.symbol} {t.side}
                             </div>
-                            <div className="text-xs text-[#6b7a99]">
+                            <div className="text-xs text-[#6b7a99] truncate">
                               {t.closed}
                             </div>
                           </div>
                           <div
-                            className={`text-right ${
+                            className={`text-right ml-3 flex-shrink-0 ${
                               t.pnl >= 0 ? "text-[#00ff9d]" : "text-[#ff3d9e]"
                             }`}
                           >
@@ -879,7 +1031,7 @@ export default function Profile() {
                         <div className="flex justify-between text-xs mt-1 text-[#6b7a99]">
                           <span>Qty: {t.qty}</span>
                           <span>Fee: {fmt(t.fee)}</span>
-                          <span>Duration: 2h 12m</span>
+                          <span>2h 12m</span>
                         </div>
                       </div>
                     ))}
@@ -887,243 +1039,152 @@ export default function Profile() {
                       View All Activity →
                     </button>
                   </div>
-                </div>
+                </Card>
               </div>
             </>
           )}
+
           {/* POSITIONS TAB */}
           {tab === "positions" && (
             <Card title="Open Positions">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm table-auto">
-                  <thead>
-                    <tr className="bg-[#252841] text-[#6b7a99] text-left">
-                      <th className="py-2 px-4 font-medium">Symbol</th>
-                      <th className="py-2 px-4 font-medium">Side</th>
-                      <th className="py-2 px-4 font-medium">Qty</th>
-                      <th className="py-2 px-4 font-medium">Avg</th>
-                      <th className="py-2 px-4 font-medium">Mark</th>
-                      <th className="py-2 px-4 font-medium">Unrealized</th>
-                      <th className="py-2 px-4 font-medium">SL</th>
-                      <th className="py-2 px-4 font-medium">TP</th>
-                      <th className="py-2 px-4 font-medium">Opened</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {openPositions.map((p) => {
-                      const unreal =
-                        (p.side === "Buy" ? p.mark - p.avg : p.avg - p.mark) *
-                        p.qty;
-                      return (
-                        <tr
-                          key={p.id}
-                          className="border-b border-[#2d3150] hover:bg-[#252841] cursor-pointer"
-                          onClick={() =>
-                            setShowTrade({ ...p, unrealized: unreal })
-                          }
-                        >
-                          <td className="py-2 px-4">{p.symbol}</td>
-                          <td className="py-2 px-4">{p.side}</td>
-                          <td className="py-2 px-4">{p.qty}</td>
-                          <td className="py-2 px-4">{fmt(p.avg)}</td>
-                          <td className="py-2 px-4">{fmt(p.mark)}</td>
-                          <td className="py-2 px-4">{chip(unreal)}</td>
-                          <td className="py-2 px-4">{fmt(p.sl)}</td>
-                          <td className="py-2 px-4">{fmt(p.tp)}</td>
-                          <td className="py-2 px-4">{p.opened}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <ResponsiveTable
+                data={openPositions.map((p) => ({
+                  ...p,
+                  unrealized:
+                    (p.side === "Buy" ? p.mark - p.avg : p.avg - p.mark) *
+                    p.qty,
+                }))}
+                columns={positionColumns}
+                onRowClick={(row) =>
+                  setShowTrade({ ...row, unrealized: row.unrealized })
+                }
+              />
             </Card>
           )}
+
           {/* ORDERS TAB */}
           {tab === "orders" && (
             <Card title="Working Orders">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm table-auto">
-                  <thead>
-                    <tr className="bg-[#252841] text-[#6b7a99] text-left">
-                      <th className="py-2 px-4 font-medium">Symbol</th>
-                      <th className="py-2 px-4 font-medium">Side</th>
-                      <th className="py-2 px-4 font-medium">Qty</th>
-                      <th className="py-2 px-4 font-medium">Price</th>
-                      <th className="py-2 px-4 font-medium">Placed</th>
-                      <th className="py-2 px-4 font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {workingOrders.map((o) => (
-                      <tr
-                        key={o.id}
-                        className="border-b border-[#2d3150] hover:bg-[#252841]"
-                      >
-                        <td className="py-2 px-4">{o.symbol}</td>
-                        <td className="py-2 px-4">{o.side}</td>
-                        <td className="py-2 px-4">{o.qty}</td>
-                        <td className="py-2 px-4">{fmt(o.price)}</td>
-                        <td className="py-2 px-4">{o.placed}</td>
-                        <td className="py-2 px-4">{o.status}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ResponsiveTable data={workingOrders} columns={orderColumns} />
             </Card>
           )}
+
           {/* TRADE HISTORY TAB */}
           {tab === "history" && (
             <Card
               title="Trade History"
               right={
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="px-2 py-1 rounded-md bg-[#252841] border border-[#2d3150] text-xs"
+                    className="px-2 py-1 rounded-md bg-[#252841] border border-[#2d3150] text-xs w-32"
                     placeholder="Search..."
                   />
-                  <label className="flex items-center gap-1 text-[11px]">
+                  <label className="flex items-center gap-1 text-[11px] whitespace-nowrap">
                     <input
                       type="checkbox"
                       checked={onlyWins}
                       onChange={(e) => setOnlyWins(e.target.checked)}
-                    />{" "}
+                      className="rounded"
+                    />
                     Only Wins
                   </label>
                 </div>
               }
             >
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm table-auto">
-                  <thead>
-                    <tr className="bg-[#252841] text-[#6b7a99] text-left">
-                      <th className="py-2 px-4 font-medium">Symbol</th>
-                      <th className="py-2 px-4 font-medium">Side</th>
-                      <th className="py-2 px-4 font-medium">Qty</th>
-                      <th className="py-2 px-4 font-medium">Open</th>
-                      <th className="py-2 px-4 font-medium">Close</th>
-                      <th className="py-2 px-4 font-medium">P&L</th>
-                      <th className="py-2 px-4 font-medium">Fee</th>
-                      <th className="py-2 px-4 font-medium">Opened</th>
-                      <th className="py-2 px-4 font-medium">Closed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tradesFiltered.map((t) => (
-                      <tr
-                        key={t.id}
-                        className="border-b border-[#2d3150] hover:bg-[#252841]"
-                      >
-                        <td className="py-2 px-4">{t.symbol}</td>
-                        <td className="py-2 px-4">{t.side}</td>
-                        <td className="py-2 px-4">{t.qty}</td>
-                        <td className="py-2 px-4">{fmt(t.open)}</td>
-                        <td className="py-2 px-4">{fmt(t.close)}</td>
-                        <td className="py-2 px-4">{chip(t.pnl)}</td>
-                        <td className="py-2 px-4">{fmt(t.fee)}</td>
-                        <td className="py-2 px-4">{t.opened}</td>
-                        <td className="py-2 px-4">{t.closed}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ResponsiveTable data={tradesFiltered} columns={historyColumns} />
             </Card>
           )}
+
           {/* FUNDS TAB */}
           {tab === "funds" && (
             <>
               <Card title="Deposits">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm table-auto">
-                    <thead>
-                      <tr className="bg-[#252841] text-[#6b7a99] text-left">
-                        <th className="py-2 px-4 font-medium">Date</th>
-                        <th className="py-2 px-4 font-medium">Amount</th>
-                        <th className="py-2 px-4 font-medium">Method</th>
-                        <th className="py-2 px-4 font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {deposits.map((d) => (
-                        <tr
-                          key={d.id}
-                          className="border-b border-[#2d3150] hover:bg-[#252841]"
-                        >
-                          <td className="py-2 px-4">{d.date}</td>
-                          <td className="py-2 px-4">{fmt(d.amount)}</td>
-                          <td className="py-2 px-4">{d.method}</td>
-                          <td className="py-2 px-4">{d.status}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ResponsiveTable data={deposits} columns={fundsColumns} />
               </Card>
               <Card title="Withdrawals">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm table-auto">
-                    <thead>
-                      <tr className="bg-[#252841] text-[#6b7a99] text-left">
-                        <th className="py-2 px-4 font-medium">Date</th>
-                        <th className="py-2 px-4 font-medium">Amount</th>
-                        <th className="py-2 px-4 font-medium">Method</th>
-                        <th className="py-2 px-4 font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {withdrawals.map((w) => (
-                        <tr
-                          key={w.id}
-                          className="border-b border-[#2d3150] hover:bg-[#252841]"
-                        >
-                          <td className="py-2 px-4">{w.date}</td>
-                          <td className="py-2 px-4">{fmt(w.amount)}</td>
-                          <td className="py-2 px-4">{w.method}</td>
-                          <td className="py-2 px-4">{w.status}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ResponsiveTable data={withdrawals} columns={fundsColumns} />
               </Card>
             </>
           )}
-          {/* ALERTS */}
+
+          {/* ALERTS TAB */}
           {tab === "alerts" && (
             <Card title="Alerts">
-              <div className="py-8 text-[#6b7a99]">No alerts yet.</div>
+              <div className="py-8 text-center text-[#6b7a99]">
+                <div className="text-lg mb-2">No alerts yet</div>
+                <div className="text-sm">
+                  Set up price alerts for your favorite symbols
+                </div>
+              </div>
             </Card>
           )}
-          {/* SETTINGS */}
+
+          {/* SETTINGS TAB */}
           {tab === "settings" && (
             <Card title="Settings">
-              <div className="py-8 text-[#6b7a99]">User settings go here.</div>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-[#6b7a99] mb-2">
+                      Account Type
+                    </label>
+                    <select className="w-full bg-[#252841] border border-[#2d3150] rounded-lg px-3 py-2 text-sm">
+                      <option>Standard</option>
+                      <option>Professional</option>
+                      <option>Institutional</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-[#6b7a99] mb-2">
+                      Base Currency
+                    </label>
+                    <select className="w-full bg-[#252841] border border-[#2d3150] rounded-lg px-3 py-2 text-sm">
+                      <option>USD</option>
+                      <option>EUR</option>
+                      <option>GBP</option>
+                    </select>
+                  </div>
+                </div>
+                <button className="bg-gradient-to-r from-[#00E1A1] to-[#00FF66] text-black font-medium py-2 px-4 rounded-lg">
+                  Save Settings
+                </button>
+              </div>
             </Card>
           )}
-          {/* WATCHLIST */}
+
+          {/* WATCHLIST TAB */}
           {tab === "watch" && (
-            <Card title="Watchlist">
+            <Card
+              title="Watchlist"
+              right={
+                <button className="text-xs text-[#00b8ff] hover:text-[#00ff9d]">
+                  + Add Symbol
+                </button>
+              }
+            >
               <div className="space-y-3">
                 {watchlist.map((w) => (
                   <div
                     key={w.symbol}
                     className="flex items-center justify-between p-3 hover:bg-[#252841] rounded-lg transition"
                   >
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-md bg-[#1a1b2e] flex items-center justify-center mr-3 font-semibold">
+                    <div className="flex items-center min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-md bg-[#1a1b2e] flex items-center justify-center mr-3 font-semibold flex-shrink-0">
                         {w.symbol[0]}
                       </div>
-                      <div>
-                        <div className="font-medium">{w.symbol}</div>
-                        <div className="text-xs text-[#6b7a99]">NASDAQ</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate">{w.symbol}</div>
+                        <div className="text-xs text-[#6b7a99] truncate">
+                          NASDAQ
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-medium">${w.price.toFixed(2)}</div>
+                    <div className="text-right ml-3 flex-shrink-0">
+                      <div className="font-medium text-sm">
+                        ${w.price.toFixed(2)}
+                      </div>
                       <div
                         className={`text-xs ${
                           w.change >= 0 ? "text-[#00ff9d]" : "text-[#ff3d9e]"
@@ -1138,18 +1199,20 @@ export default function Profile() {
               </div>
             </Card>
           )}
-          <footer className="pt-4 text-center text-xs text-[#6b7a99]">
+
+          <footer className="pt-6 text-center text-xs text-[#6b7a99]">
             © {new Date().getFullYear()} V Trade — Professional Trading
             Dashboard
           </footer>
         </main>
       </div>
+
       {/* Trade Modal */}
       {showTrade && (
-        <div className="fixed inset-0 z-40 bg-black/70 grid place-items-center p-4">
-          <div className="w-full max-w-xl bg-[#1a1b2e] rounded-2xl border border-[#00ff9d]/30 overflow-hidden shadow-2xl shadow-black/50">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[#2d3150] bg-[#252841]">
-              <div className="font-semibold">
+        <div className="fixed inset-0 z-50 bg-black/70 grid place-items-center p-3 sm:p-4">
+          <div className="w-full max-w-2xl bg-[#1a1b2e] rounded-2xl border border-[#00ff9d]/30 overflow-hidden shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-[#2d3150] bg-[#252841] sticky top-0">
+              <div className="font-semibold text-sm sm:text-base">
                 Position — {showTrade.symbol} ({showTrade.side})
               </div>
               <button
@@ -1159,7 +1222,7 @@ export default function Profile() {
                 Close
               </button>
             </div>
-            <div className="p-5 grid sm:grid-cols-2 gap-4">
+            <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-[#252841] rounded-xl p-4 border border-[#2d3150]">
                 <div className="text-xs text-[#6b7a99]">Unrealized P&L</div>
                 <div className="text-2xl font-semibold mt-1">
@@ -1172,7 +1235,9 @@ export default function Profile() {
                   </div>
                   <div>
                     <div className="text-[#6b7a99]">Opened</div>
-                    <div className="font-semibold">{showTrade.opened}</div>
+                    <div className="font-semibold text-xs">
+                      {showTrade.opened}
+                    </div>
                   </div>
                   <div>
                     <div className="text-[#6b7a99]">Avg</div>
@@ -1196,17 +1261,17 @@ export default function Profile() {
                     <div className="font-semibold">{fmt(showTrade.tp)}</div>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <button className="px-3 py-1.5 rounded-lg bg-[#ff3d9e]/90 hover:bg-[#ff3d9e] text-sm">
+                <div className="flex gap-2 mt-4 flex-wrap">
+                  <button className="px-3 py-1.5 rounded-lg bg-[#ff3d9e]/90 hover:bg-[#ff3d9e] text-sm flex-1 min-w-[120px]">
                     Close Now
                   </button>
-                  <button className="px-3 py-1.5 rounded-lg bg-[#252841] hover:bg-[#1a1b2e] text-sm">
+                  <button className="px-3 py-1.5 rounded-lg bg-[#252841] hover:bg-[#1a1b2e] text-sm flex-1 min-w-[120px]">
                     Modify SL/TP
                   </button>
                 </div>
               </div>
             </div>
-            <div className="px-5 pb-5">
+            <div className="px-4 sm:px-5 pb-4 sm:pb-5">
               <div className="text-xs text-[#6b7a99] mb-2">P&L Preview</div>
               <ChartLine
                 data={[

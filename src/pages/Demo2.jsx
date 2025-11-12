@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import logo from "./logo.png";
-import axios from "axios";
-import { toast } from "react-toastify";
+import logo from "./Logo-vtrade.png";
 import { useNavigate } from "react-router-dom";
 import {
   FaApple,
@@ -14,19 +12,19 @@ import {
 import { SiTesla, SiBinance } from "react-icons/si";
 
 const FINNHUB_API_KEY = "d2e4821r01qjrul5up50d2e4821r01qjrul5up5g";
-const INDIAN_STOCKS = [
-  {
-    symbol: "NSE:RELIANCE",
-    display: "RELIANCE",
-    type: "stock",
-    icon: <FaAmazon />,
-  }, // Replace icon with something suitable
-  { symbol: "NSE:TCS", display: "TCS", type: "stock", icon: <FaMicrosoft /> },
-  { symbol: "NSE:INFY", display: "INFY", type: "stock", icon: <FaGoogle /> },
-  { symbol: "NSE:HDFC", display: "HDFC", type: "stock", icon: <FaApple /> },
-  // Add more as needed
-];
 
+{
+  /*const ASSETS = [
+  { symbol: "AAPL", display: "AAPL", type: "stock", icon: "🟦" },
+  { symbol: "TSLA", display: "TSLA", type: "stock", icon: "🚗" },
+  { symbol: "AMZN", display: "AMZN", type: "stock", icon: "🛒" },
+  { symbol: "MSFT", display: "MSFT", type: "stock", icon: "💻" },
+  { symbol: "GOOGL", display: "GOOGL", type: "stock", icon: "🔍" },
+  { symbol: "BINANCE:BTCUSDT", display: "BTC/USD", type: "crypto", icon: "₿" },
+  { symbol: "BINANCE:ETHUSDT", display: "ETH/USD", type: "crypto", icon: "🟣" },
+];
+*/
+}
 const ASSETS = [
   { symbol: "AAPL", display: "AAPL", type: "stock", icon: <FaApple /> },
   { symbol: "TSLA", display: "TSLA", type: "stock", icon: <SiTesla /> },
@@ -53,7 +51,7 @@ const ASSETS = [
   },
 ];
 
-const tabs = ["Deals", "Orders", "History"];
+const tabs = ["Deals", "Orders", "History", "Net Deals", "News", "Alerts"];
 
 const tableColumns = [
   "Script",
@@ -67,6 +65,148 @@ const tableColumns = [
   "Margin",
   "SL",
 ];
+
+const ordersData = [
+  {
+    script: "AAPL",
+    ticket: "99871",
+    datetime: "2025-08-14 12:31",
+    type: "Buy",
+    amount: "15",
+    oprice: "$164.30",
+    cprice: "$168.13",
+    commission: "$3.00",
+    margin: "$1200",
+    sl: "$159",
+  },
+  {
+    script: "TSLA",
+    ticket: "99872",
+    datetime: "2025-08-14 10:03",
+    type: "Sell",
+    amount: "5",
+    oprice: "$705.50",
+    cprice: "$710.11",
+    commission: "$2.10",
+    margin: "$1000",
+    sl: "$698",
+  },
+];
+
+const dealsData = [
+  {
+    script: "GOOGL",
+    ticket: "97005",
+    datetime: "2025-08-13 13:40",
+    type: "Buy",
+    amount: "8",
+    oprice: "$2725.12",
+    cprice: "$2731.55",
+    commission: "$4.00",
+    margin: "$2200",
+    sl: "$2720",
+  },
+];
+
+const historyData = [
+  {
+    script: "AMZN",
+    ticket: "90007",
+    datetime: "2025-08-10 15:03",
+    type: "Sell",
+    amount: "3",
+    oprice: "$3400.00",
+    cprice: "$3442.10",
+    commission: "$1.80",
+    margin: "$1350",
+    sl: "$3382",
+  },
+];
+
+function getTabData(tab) {
+  if (tab === "Deals") return dealsData;
+  if (tab === "Orders") return ordersData;
+  if (tab === "History") return historyData;
+  return [];
+}
+
+function getRecentAllData() {
+  const combined = [
+    ...dealsData.map((d) => ({ ...d, category: "Deals" })),
+    ...ordersData.map((d) => ({ ...d, category: "Orders" })),
+    ...historyData.map((d) => ({ ...d, category: "History" })),
+  ];
+  combined.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+  return combined.slice(0, 5);
+}
+
+async function fetchFinnhubQuote(symbol) {
+  try {
+    const response = await fetch(
+      `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`
+    );
+    const data = await response.json();
+    if (data.c) {
+      return {
+        bid: data.p ? data.p : data.c * 0.999,
+        ask: data.p ? data.p : data.c * 1.001,
+        price: data.c,
+        change: data.dp || 0,
+      };
+    }
+  } catch (err) {
+    console.error(`Error fetching ${symbol}:`, err);
+  }
+  return null;
+}
+
+async function fetchQuotes(assetList) {
+  const results = [];
+  for (const asset of assetList) {
+    let quoteData = null;
+    try {
+      quoteData = await fetchFinnhubQuote(asset.symbol);
+      if (quoteData) {
+        results.push({
+          ...asset,
+          bid: quoteData.bid,
+          ask: quoteData.ask,
+          price: quoteData.price,
+          change: Math.abs(quoteData.change).toFixed(2),
+          changeDirection: quoteData.change >= 0 ? "up" : "down",
+        });
+      } else {
+        results.push({
+          ...asset,
+          bid: 0,
+          ask: 0,
+          price: 0,
+          change: "0.00",
+          changeDirection: "up",
+        });
+      }
+    } catch (err) {
+      console.error(`Error processing ${asset.symbol}:`, err);
+      results.push({
+        ...asset,
+        bid: null,
+        ask: null,
+        price: null,
+        change: null,
+      });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  return results;
+}
+
+function getChartSymbol(asset) {
+  if (asset.type === "stock") return asset.symbol;
+  if (asset.type === "crypto")
+    return `BINANCE:${asset.symbol.replace("BINANCE:", "")}`;
+  if (asset.type === "forex") return asset.symbol.replace("OANDA:", "FX:");
+  return asset.symbol;
+}
 
 const formatPrice = (price) => {
   if (price === null || price === undefined) return "--";
@@ -86,89 +226,6 @@ const formatPrice = (price) => {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [userInfo, setUserInfo] = useState(null);
-  const [loadingUserInfo, setLoadingUserInfo] = useState(false);
-  const [showIndianStocks, setShowIndianStocks] = useState(false);
-  const [indianStockQuotes, setIndianStockQuotes] = useState(
-    INDIAN_STOCKS.map((stock) => ({
-      ...stock,
-      bid: null,
-      ask: null,
-      price: null,
-      change: null,
-    }))
-  );
-
-  // Auth token from localStorage or user context
-  const user = JSON.parse(localStorage.getItem("user")) || {};
-  const authConfig = user.token
-    ? {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      }
-    : {};
-
-  useEffect(() => {
-    async function fetchUserInfo() {
-      setLoadingUserInfo(true);
-      try {
-        const res = await axios.get(
-          "http://localhost:8080/api/auth/profile",
-          authConfig
-        );
-        if (res.data.success) {
-          setUserInfo(res.data.user);
-        }
-      } catch (e) {
-        console.error("Failed to fetch user info", e);
-        // Optionally handle error, logout user etc.
-      } finally {
-        setLoadingUserInfo(false);
-      }
-    }
-    fetchUserInfo();
-  }, []);
-  {
-    /*const fetchUserInfo = useCallback(async () => {
-      setLoadingUserInfo(true);
-      try {
-        const res = await axios.get(
-          "http://localhost:8080/api/auth/profile",
-          authConfig
-        );
-        if (res.data.success) {
-          setUserInfo(res.data.user);
-        }
-      } catch (e) {
-        console.error("Failed to fetch user info", e);
-        // Optionally handle error, logout user etc.
-      } finally {
-        setLoadingUserInfo(false);
-      }
-    }, [authConfig]);
-
-    useEffect(() => {
-      fetchUserInfo();
-    }, [fetchUserInfo]); */
-  }
-  useEffect(() => {
-    let cancelled = false;
-
-    async function updateIndianQuotes() {
-      if (showIndianStocks) {
-        const quotes = await fetchQuotes(INDIAN_STOCKS);
-        if (!cancelled) setIndianStockQuotes(quotes || []);
-      }
-    }
-
-    updateIndianQuotes();
-    const timer = setInterval(updateIndianQuotes, 60000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [showIndianStocks]);
   const [searchTerm, setSearchTerm] = useState("");
   const [quotes, setQuotes] = useState(
     ASSETS.map((a) => ({
@@ -181,13 +238,7 @@ export default function Dashboard() {
   );
   const [selectedAsset, setSelectedAsset] = useState(ASSETS[0]);
   const [activeTab, setActiveTab] = useState("Orders");
-
-  // Live data states for tabs
-  const [deals, setDeals] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
-
   const [showBalance, setShowBalance] = useState(true);
   const [showRecent, setShowRecent] = useState(false);
   const [theme, setTheme] = useState("dark"); // dark mode by default
@@ -203,7 +254,6 @@ export default function Dashboard() {
     Credit: "0.00",
   };
 
-  // Fetch quotes for assets (existing logic unchanged)
   useEffect(() => {
     let cancelled = false;
     async function updateQuotes() {
@@ -218,46 +268,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Fetch live tab data when activeTab changes
-  useEffect(() => {
-    setLoading(true);
-
-    async function fetchTabData() {
-      try {
-        if (activeTab === "Deals") {
-          const { data } = await axios.get(
-            "http://localhost:8080/api/deals",
-            authConfig
-          );
-          if (data.success) setDeals(data.deals || []);
-          else setDeals([]);
-        } else if (activeTab === "Orders") {
-          const { data } = await axios.get(
-            "http://localhost:8080/api/orders",
-            authConfig
-          );
-          if (data.success) setOrders(data.data || []);
-          else setOrders([]);
-        } else if (activeTab === "History") {
-          const { data } = await axios.get(
-            "http://localhost:8080/api/deals/history",
-            authConfig
-          );
-          if (data.success) setHistory(data.deals || []);
-          else setHistory([]);
-        }
-      } catch (err) {
-        console.error("Error fetching data for tab:", activeTab, err);
-        toast.error(`Failed to load ${activeTab} data`);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchTabData();
-  }, [activeTab]);
-
-  // TradingView chart widget loader (existing logic)
   useEffect(() => {
     const container = document.getElementById("tv_chart_desktop");
     if (!container) return;
@@ -269,10 +279,10 @@ export default function Dashboard() {
       if (window.TradingView) {
         new window.TradingView.widget({
           autosize: true,
-          symbol: selectedAsset.symbol,
+          symbol: getChartSymbol(selectedAsset),
           interval: "15",
           timezone: "Etc/UTC",
-          theme: theme,
+          theme: theme, // sync theme for chart
           style: "1",
           locale: "en",
           container_id: "tv_chart_desktop",
@@ -284,64 +294,6 @@ export default function Dashboard() {
 
   const handleAssetClick = (asset) => setSelectedAsset(asset);
 
-  // Combines latest 5 rows from all tabs for "Recent"
-  function getRecentAllData() {
-    const combined = [
-      ...deals.map((d) => ({ ...d, category: "Deals" })),
-      ...orders.map((d) => ({ ...d, category: "Orders" })),
-      ...history.map((d) => ({ ...d, category: "History" })),
-    ];
-    combined.sort(
-      (a, b) =>
-        new Date(b.executedAt || b.createdAt || b.datetime) -
-        new Date(a.executedAt || a.createdAt || a.datetime)
-    );
-    return combined.slice(0, 5);
-  }
-
-  // Returns current tab data array
-  function getTabData(tab) {
-    if (tab === "Deals") return deals;
-    if (tab === "Orders") return orders;
-    if (tab === "History") return history;
-    return [];
-  }
-
-  // Map backend fields to table columns:
-  const renderRowCell = (row, col) => {
-    switch (col) {
-      case "Script":
-        return row.symbol || row.script || "-";
-      case "Ticket ID":
-        return row._id || row.ticket || "-";
-      case "Date/Time":
-        // Prefer executedAt, fallback createdAt or datetime
-        return row.executedAt
-          ? new Date(row.executedAt).toLocaleString()
-          : row.createdAt
-          ? new Date(row.createdAt).toLocaleString()
-          : row.datetime || "-";
-      case "Type":
-        return row.side || row.type || "-";
-      case "Amount":
-        return row.qty || row.amount || "-";
-      case "Open Price":
-        return formatPrice(
-          row.openPrice || row.oprice || row.executedPrice || "-"
-        );
-      case "Current Price":
-        return formatPrice(row.currentPrice || row.cprice || "-");
-      case "Commission":
-        return formatPrice(row.commission || row.fee || 0);
-      case "Margin":
-        return formatPrice(row.margin || 0);
-      case "SL":
-        return formatPrice(row.sl || "-");
-      default:
-        return "-";
-    }
-  };
-
   const isDark = theme === "dark";
 
   return (
@@ -350,7 +302,7 @@ export default function Dashboard() {
         isDark ? "bg-[#0e0f1a] text-gray-100" : "bg-[#f5f6fa] text-gray-900"
       }`}
     >
-      {/* Top bar and other UI unchanged */}
+      {/* Top bar */}
       <div
         className={`flex items-center justify-between px-6 py-3 border-b transition-colors duration-300 ${
           isDark
@@ -362,8 +314,8 @@ export default function Dashboard() {
           <img
             src={logo}
             alt="Logo"
-            className={`w-8 h-8 rounded-full object-cover ${
-              isDark ? "bg-white" : "bg-transparent"
+            className={`w-10 h-10 object-contain ${
+              isDark ? "bg-white rounded-full p-1" : "bg-transparent"
             }`}
           />
           <span
@@ -371,7 +323,7 @@ export default function Dashboard() {
               isDark ? "text-white" : "text-gray-800"
             }`}
           >
-            Digital Brains
+            V Trade
           </span>
           <div className="flex items-center gap-2 ml-4">
             <span
@@ -470,7 +422,7 @@ export default function Dashboard() {
       </div>
 
       {/* Balance strip */}
-      {/*showBalance && (
+      {showBalance && (
         <div
           className={`px-6 py-3 border-b transition-colors duration-300 ${
             isDark
@@ -522,64 +474,6 @@ export default function Dashboard() {
               Credit :{" "}
               <b className={isDark ? "text-white" : "text-gray-900"}>
                 {accountDetails["Credit"]}
-              </b>
-            </span>
-          </div>
-        </div>
-      )*/}
-
-      {showBalance && (
-        <div
-          className={`px-6 py-3 border-b transition-colors duration-300 ${
-            isDark
-              ? "bg-gradient-to-r from-[#1a1b2e] to-[#252841] border-[#2d3150]"
-              : "bg-white border-gray-300 shadow-sm"
-          }`}
-        >
-          <div className="flex items-center gap-8 text-sm">
-            <div className="flex items-center gap-2">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  isDark
-                    ? "bg-[#252d3d] text-[#6b7a99]"
-                    : "bg-gray-200 text-gray-500"
-                }`}
-              >
-                💳
-              </div>
-              <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-                Balance :
-              </span>
-              <span className={isDark ? "text-[#ff5b5b]" : "text-red-600"}>
-                {userInfo?.balance?.toFixed(2) ?? "--"}
-              </span>
-            </div>
-            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-              Free Margin :{" "}
-              <b className={isDark ? "text-[#ff5b5b]" : "text-red-600"}>
-                {userInfo?.freeMargin?.toFixed(2) ?? "--"}
-              </b>
-            </span>
-            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-              Total PnL :{" "}
-              <b className={isDark ? "text-white" : "text-gray-900"}>0.00</b>
-            </span>
-            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-              Equity :{" "}
-              <b className={isDark ? "text-[#ff5b5b]" : "text-red-600"}>
-                {userInfo?.equity?.toFixed(2) ?? "--"}
-              </b>
-            </span>
-            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-              Used Margin :{" "}
-              <b className={isDark ? "text-white" : "text-gray-900"}>
-                {userInfo?.marginUsed?.toFixed(2) ?? "--"}
-              </b>
-            </span>
-            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-              Credit :{" "}
-              <b className={isDark ? "text-white" : "text-gray-900"}>
-                {userInfo?.pendingBalance?.toFixed(2) ?? "0.00"}
               </b>
             </span>
           </div>
@@ -638,7 +532,6 @@ export default function Dashboard() {
         }}
       >
         {/* Instruments Sidebar */}
-        {/* Instruments Sidebar */}
         <div
           className={`col-span-3 rounded-xl border overflow-hidden flex flex-col shadow-lg transition-colors duration-300 ${
             isDark
@@ -650,35 +543,16 @@ export default function Dashboard() {
             minHeight: 0,
           }}
         >
-          {/* Header with INSTRUMENTS and Indian Stock toggle */}
           <div
-            className={`p-3 border-b flex justify-between items-center font-semibold text-sm transition-colors duration-300 ${
+            className={`p-3 border-b flex justify-between font-semibold text-sm transition-colors duration-300 ${
               isDark
                 ? "bg-gradient-to-r from-[#252841] to-[#1a1b2e] border-[#2d3150] text-white"
                 : "bg-gray-100 border-gray-300 text-gray-800"
             }`}
             style={{ minHeight: 46 }}
           >
-            <span>INSTRUMENTS</span>
-
-            {/* Indian Stock toggle */}
-            <label
-              className={`flex items-center cursor-pointer select-none text-xs font-normal ${
-                isDark ? "text-gray-400" : "text-gray-700"
-              }`}
-              title="Toggle Indian Stock Instruments"
-            >
-              Indian Stock
-              <input
-                type="checkbox"
-                checked={showIndianStocks}
-                onChange={() => setShowIndianStocks((s) => !s)}
-                className="ml-2 form-checkbox h-4 w-4 text-green-400 rounded-sm cursor-pointer"
-              />
-            </label>
+            INSTRUMENTS
           </div>
-
-          {/* Search Input */}
           <div
             className={`px-3 py-2 border-b transition-colors duration-300 ${
               isDark
@@ -704,8 +578,6 @@ export default function Dashboard() {
               }}
             />
           </div>
-
-          {/* Instruments List Table */}
           <div
             className={`overflow-y-auto transition-colors duration-300 ${
               isDark ? "bg-[#1a1b2e]" : "bg-white"
@@ -720,10 +592,10 @@ export default function Dashboard() {
             }}
           >
             <style>{`
-      div::-webkit-scrollbar {
-        display: none;
-      }
-    `}</style>
+        div::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
 
             <table className="w-full text-xs" style={{ fontSize: 13 }}>
               <thead>
@@ -741,7 +613,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {(showIndianStocks ? indianStockQuotes : quotes)
+                {(quotes || [])
                   .filter(
                     (q) =>
                       !searchTerm ||
@@ -800,7 +672,7 @@ export default function Dashboard() {
                       </td>
                     </tr>
                   ))}
-                {(showIndianStocks ? indianStockQuotes : quotes).filter(
+                {(quotes || []).filter(
                   (q) =>
                     !searchTerm ||
                     q.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -943,6 +815,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Consistent space below main grid */}
+      {/*} <div style={{ height: 10 }} /> */}
+
       {/* Bottom Tabs/Table */}
       <div
         className={`relative z-10 w-full border-t shadow-lg transition-colors duration-300 ${
@@ -1002,281 +877,146 @@ export default function Dashboard() {
           }`}
           style={{ maxHeight: "200px" }}
         >
-          {loading ? (
-            <div
-              className={`text-center py-8 ${
-                isDark ? "text-white" : "text-gray-700"
-              }`}
-            >
-              Loading {activeTab}...
-            </div>
-          ) : (showRecent ? getRecentAllData() : getTabData(activeTab))
-              .length === 0 ? (
-            <div
-              className={`text-center py-8 ${
-                isDark ? "text-[#6b7a99]" : "text-gray-600"
-              }`}
-            >
-              No{" "}
-              {showRecent
-                ? "recent data available"
-                : activeTab.toLowerCase() + " data available"}
-            </div>
-          ) : (
-            <table className="min-w-full text-xs">
-              <thead>
-                <tr
-                  className={`transition-colors duration-300 ${
-                    isDark
-                      ? "text-[#6b7a99] bg-[#252841]"
-                      : "text-gray-600 bg-gray-100"
-                  }`}
-                >
-                  {tableColumns.map((col) => (
-                    <th className="px-3 py-2 text-left" key={col}>
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(showRecent ? getRecentAllData() : getTabData(activeTab)).map(
-                  (row, idx) => (
-                    <tr
-                      key={idx}
-                      className={`border-b transition-colors duration-300 hover:cursor-pointer ${
-                        isDark
-                          ? "border-[#2d3150] hover:bg-[#252841]"
-                          : "border-gray-200 hover:bg-gray-50"
+          <table className="min-w-full text-xs">
+            <thead>
+              <tr
+                className={`transition-colors duration-300 ${
+                  isDark
+                    ? "text-[#6b7a99] bg-[#252841]"
+                    : "text-gray-600 bg-gray-100"
+                }`}
+              >
+                {tableColumns.map((col) => (
+                  <th className="px-3 py-2 text-left" key={col}>
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(showRecent ? getRecentAllData() : getTabData(activeTab)).map(
+                (row, idx) => (
+                  <tr
+                    key={idx}
+                    className={`border-b transition-colors duration-300 hover:cursor-pointer ${
+                      isDark
+                        ? "border-[#2d3150] hover:bg-[#252841]"
+                        : "border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    <td
+                      className={`px-3 py-2 font-medium ${
+                        isDark ? "text-white" : "text-gray-900"
                       }`}
                     >
-                      {tableColumns.map((col) => (
-                        <td
-                          key={col}
-                          className={`px-3 py-2 ${
-                            col === "Script"
-                              ? `font-medium ${
-                                  isDark ? "text-white" : "text-gray-900"
-                                }`
-                              : isDark
-                              ? "text-[#c7d0e1]"
-                              : "text-gray-700"
-                          } ${
-                            col === "Type" &&
-                            (row.type === "Buy" || row.side === "Buy"
-                              ? isDark
-                                ? "text-[#00ff9d]"
-                                : "text-green-600"
-                              : isDark
-                              ? "text-[#ff3d9e]"
-                              : "text-red-600")
-                          }`}
-                        >
-                          {renderRowCell(row, col)}
-                        </td>
-                      ))}
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          )}
+                      {row.script}
+                    </td>
+                    <td
+                      className={`px-3 py-2 ${
+                        isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                      }`}
+                    >
+                      {row.ticket}
+                    </td>
+                    <td
+                      className={`px-3 py-2 ${
+                        isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                      }`}
+                    >
+                      {row.datetime}
+                    </td>
+                    <td
+                      className={`px-3 py-2 font-medium ${
+                        row.type === "Buy"
+                          ? isDark
+                            ? "text-[#00ff9d]"
+                            : "text-green-600"
+                          : isDark
+                          ? "text-[#ff3d9e]"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {row.type}
+                    </td>
+                    <td
+                      className={`px-3 py-2 ${
+                        isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                      }`}
+                    >
+                      {row.amount}
+                    </td>
+                    <td
+                      className={`px-3 py-2 ${
+                        isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                      }`}
+                    >
+                      {row.oprice}
+                    </td>
+                    <td
+                      className={`px-3 py-2 ${
+                        isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                      }`}
+                    >
+                      {row.cprice}
+                    </td>
+                    <td
+                      className={`px-3 py-2 ${
+                        isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                      }`}
+                    >
+                      {row.commission}
+                    </td>
+                    <td
+                      className={`px-3 py-2 ${
+                        isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                      }`}
+                    >
+                      {row.margin}
+                    </td>
+                    <td
+                      className={`px-3 py-2 ${
+                        isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                      }`}
+                    >
+                      {row.sl}
+                    </td>
+                  </tr>
+                )
+              )}
+              {(showRecent ? getRecentAllData() : getTabData(activeTab))
+                .length === 0 && (
+                <tr>
+                  <td
+                    colSpan={tableColumns.length}
+                    className={`text-center py-4 ${
+                      isDark ? "text-[#6b7a99]" : "text-gray-600"
+                    }`}
+                  >
+                    No{" "}
+                    {showRecent
+                      ? "recent data available"
+                      : activeTab.toLowerCase() + " data available"}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 }
 
-// Helper function to fetch quotes (existing)
-async function fetchFinnhubQuote(symbol) {
-  try {
-    const response = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`
-    );
-    const data = await response.json();
-    if (data.c) {
-      return {
-        bid: data.p ? data.p : data.c * 0.999,
-        ask: data.p ? data.p : data.c * 1.001,
-        price: data.c,
-        change: data.dp || 0,
-      };
-    }
-  } catch (err) {
-    console.error(`Error fetching ${symbol}:`, err);
-  }
-  return null;
-}
-
-async function fetchQuotes(assetList) {
-  const results = [];
-  for (const asset of assetList) {
-    let quoteData = null;
-    try {
-      quoteData = await fetchFinnhubQuote(asset.symbol);
-      if (quoteData) {
-        results.push({
-          ...asset,
-          bid: quoteData.bid,
-          ask: quoteData.ask,
-          price: quoteData.price,
-          change: Math.abs(quoteData.change).toFixed(2),
-          changeDirection: quoteData.change >= 0 ? "up" : "down",
-        });
-      } else {
-        results.push({
-          ...asset,
-          bid: 0,
-          ask: 0,
-          price: 0,
-          change: "0.00",
-          changeDirection: "up",
-        });
-      }
-    } catch (err) {
-      console.error(`Error processing ${asset.symbol}:`, err);
-      results.push({
-        ...asset,
-        bid: null,
-        ask: null,
-        price: null,
-        change: null,
-      });
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  return results;
-}
-
-function TradeModal({ symbolObj, quotes, isDark }) {
-  const [qty, setQty] = useState(1);
-  const [orderType, setOrderType] = useState("market");
-  const [sl, setSl] = useState("");
-  const [tp, setTp] = useState("");
-  const [comment, setComment] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [marginNeeded, setMarginNeeded] = useState(0);
-  const [feeEstimate, setFeeEstimate] = useState(0);
-  const [balance, setBalance] = useState(0);
-
-  const API_BASE = "http://localhost:8080/api/orders";
-
+function TradeModal({ symbolObj, quotes, onClose, onSubmit, isDark }) {
+  const [qty, setQty] = React.useState(1);
+  const [orderType, setOrderType] = React.useState("market");
+  const [sl, setSl] = React.useState("");
+  const [tp, setTp] = React.useState("");
+  const [comment, setComment] = React.useState("");
   const q = quotes.find((qq) => qq.symbol === symbolObj.symbol);
   const price = q?.price || 3786;
-  const bid = q?.bid || price - 1;
-  const ask = q?.ask || price + 1;
-
-  // Load user balance from localStorage
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user?.balance) setBalance(Number(user.balance));
-  }, []);
-
-  // Calculate margin & fee
-  useEffect(() => {
-    const numericQty = Number(qty) || 0;
-    const numericPrice = Number(price);
-
-    const baseMargin = numericQty * numericPrice;
-    const baseFee = numericQty * 0.01;
-    const slRisk = sl ? Math.abs(numericPrice - Number(sl)) * numericQty : 0;
-
-    const totalMargin = baseMargin + slRisk;
-    setMarginNeeded(Number(totalMargin.toFixed(2)));
-    setFeeEstimate(Number(baseFee.toFixed(2)));
-  }, [qty, price, sl]);
-
-  const handleOrder = async (side) => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user?.token) {
-      toast.error("Please login first.");
-      return;
-    }
-
-    const numericQty = Number(qty);
-    if (!numericQty || numericQty <= 0) {
-      toast.error("Please enter a valid quantity.");
-      return;
-    }
-
-    const numericPrice = Number(price);
-    const numericSL = sl ? Number(sl) : null;
-    const numericTP = tp ? Number(tp) : null;
-
-    // SL/TP validation
-    if (side === "Buy") {
-      if (numericSL && numericSL >= numericPrice) {
-        toast.error("Stop Loss must be below price for Buy orders.");
-        return;
-      }
-      if (numericTP && numericTP <= numericPrice) {
-        toast.error("Take Profit must be above price for Buy orders.");
-        return;
-      }
-    } else {
-      // Sell
-      if (numericSL && numericSL <= numericPrice) {
-        toast.error("Stop Loss must be above price for Sell orders.");
-        return;
-      }
-      if (numericTP && numericTP >= numericPrice) {
-        toast.error("Take Profit must be below price for Sell orders.");
-        return;
-      }
-    }
-
-    const baseMargin = numericQty * numericPrice;
-    const slRisk = numericSL
-      ? Math.abs(numericPrice - numericSL) * numericQty
-      : 0;
-    const totalMargin = baseMargin + slRisk;
-    const totalFee = numericQty * 0.01;
-
-    // Check balance
-    if (balance < totalMargin + totalFee) {
-      toast.error("Insufficient balance.");
-      return;
-    }
-
-    // Instant balance deduction
-    setBalance((prev) => Number((prev - totalMargin - totalFee).toFixed(2)));
-    setLoading(true);
-
-    try {
-      const payload = {
-        symbol: symbolObj.symbol,
-        side,
-        qty: numericQty,
-        orderType,
-        sl: numericSL || undefined,
-        tp: numericTP || undefined,
-        comment,
-        marketData: { bid, ask, last: numericPrice },
-      };
-
-      const { data } = await axios.post(`${API_BASE}`, payload, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-
-      toast.success(`Order ${side} placed successfully!`);
-
-      // Sync balance from API
-      if (data?.userBalance !== undefined) {
-        setBalance(data.userBalance);
-        localStorage.setItem(
-          "user",
-          JSON.stringify({ ...user, balance: data.userBalance })
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || "Failed to place order");
-      // Revert balance on error
-      setBalance(user.balance);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const bid = price - 1;
+  const ask = price + 1;
 
   return (
     <div
@@ -1284,8 +1024,7 @@ function TradeModal({ symbolObj, quotes, isDark }) {
         flex: 1,
         display: "flex",
         flexDirection: "column",
-        padding: 16,
-        maxHeight: "80vh",
+        padding: "16px",
         overflowY: "auto",
       }}
       className={`rounded-xl border-2 shadow-lg transition-colors duration-300 ${
@@ -1294,29 +1033,16 @@ function TradeModal({ symbolObj, quotes, isDark }) {
           : "bg-white border-blue-300"
       }`}
     >
-      {/* Loading Overlay */}
-      {loading && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 rounded-xl">
-          <div className="text-white font-bold">Placing Order...</div>
-        </div>
-      )}
-
-      {/* User Balance */}
-      <div
-        className={`mb-4 font-semibold ${
-          isDark ? "text-[#00ff9d]" : "text-gray-800"
-        }`}
-      >
-        Balance: ${balance.toFixed(2)}
+      <div className="flex justify-between items-center mb-4">
+        <h3
+          className={`text-xl font-bold ${
+            isDark ? "text-white" : "text-gray-900"
+          }`}
+        >
+          {symbolObj.display}
+        </h3>
+        {/* Close button removed because modal always visible */}
       </div>
-
-      <h3
-        className={`text-xl font-bold mb-4 ${
-          isDark ? "text-white" : "text-gray-900"
-        }`}
-      >
-        {symbolObj.display}
-      </h3>
 
       {/* Order Type Toggle */}
       <div
@@ -1326,23 +1052,34 @@ function TradeModal({ symbolObj, quotes, isDark }) {
             : "bg-gray-100 border-gray-300"
         }`}
       >
-        {["market", "pending"].map((type) => (
-          <button
-            key={type}
-            className={`flex-1 py-2 text-sm font-medium rounded transition-colors duration-300 ${
-              orderType === type
-                ? isDark
-                  ? "bg-gradient-to-r from-[#00ff9d] to-[#00b8ff] text-white shadow-lg"
-                  : "bg-blue-600 text-white shadow-md"
-                : isDark
-                ? "text-[#6b7a99] hover:text-white"
-                : "text-gray-700 hover:text-gray-900"
-            }`}
-            onClick={() => setOrderType(type)}
-          >
-            {type.charAt(0).toUpperCase() + type.slice(1)}
-          </button>
-        ))}
+        <button
+          className={`flex-1 py-2 text-sm font-medium rounded transition-colors duration-300 ${
+            orderType === "market"
+              ? isDark
+                ? "bg-gradient-to-r from-[#00ff9d] to-[#00b8ff] text-white shadow-lg"
+                : "bg-blue-600 text-white shadow-md"
+              : isDark
+              ? "text-[#6b7a99] hover:text-white"
+              : "text-gray-700 hover:text-gray-900"
+          }`}
+          onClick={() => setOrderType("market")}
+        >
+          Market
+        </button>
+        <button
+          className={`flex-1 py-2 text-sm font-medium rounded transition-colors duration-300 ${
+            orderType === "pending"
+              ? isDark
+                ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] text-white shadow-lg"
+                : "bg-pink-600 text-white shadow-md"
+              : isDark
+              ? "text-[#6b7a99] hover:text-white"
+              : "text-gray-700 hover:text-gray-900"
+          }`}
+          onClick={() => setOrderType("pending")}
+        >
+          Pending
+        </button>
       </div>
 
       {/* Volume Input */}
@@ -1368,39 +1105,86 @@ function TradeModal({ symbolObj, quotes, isDark }) {
         />
       </div>
 
-      {/* Margin & Fee */}
-      <div
-        className={`mb-4 text-sm ${
-          isDark ? "text-[#00ff9d]" : "text-gray-800"
-        }`}
-      >
-        Required Margin: ${marginNeeded} | Estimated Fee: ${feeEstimate}
-      </div>
-
       {/* Buy/Sell Buttons */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <button
-          disabled={loading}
-          className={`rounded-lg p-3 font-semibold shadow-lg transition-colors duration-300 ${
+        <div
+          className={`rounded-lg p-3 border transition-colors duration-300 ${
             isDark
-              ? "bg-gradient-to-r from-[#00ff9d] to-[#00b8ff] text-white hover:opacity-90"
-              : "bg-green-600 text-white hover:bg-green-700"
+              ? "bg-gradient-to-br from-[#25234a] to-[#ff4766]/30 border-[#ff0000]/50"
+              : "bg-red-100 border-red-300"
           }`}
-          onClick={() => handleOrder("Buy")}
         >
-          Buy @ {ask.toFixed(2)}
-        </button>
-        <button
-          disabled={loading}
-          className={`rounded-lg p-3 font-semibold shadow-lg transition-colors duration-300 ${
+          <div
+            className={`text-xs mb-1 transition-colors duration-300 ${
+              isDark ? "text-[#ff3d9e]" : "text-red-700"
+            }`}
+          >
+            Sell at
+          </div>
+          <div
+            className={`text-xl font-bold mb-2 transition-colors duration-300 ${
+              isDark ? "text-[#ff5b5b]" : "text-red-800"
+            }`}
+          >
+            {bid.toFixed(2)}
+          </div>
+          <div
+            className={`text-xs mb-2 transition-colors duration-300 ${
+              isDark ? "text-[#6b7a99]" : "text-gray-600"
+            }`}
+          >
+            Required margin: $7.57
+          </div>
+          <button
+            className={`w-full rounded-lg py-2 font-semibold shadow-lg transition-colors duration-300 ${
+              isDark
+                ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] text-white hover:opacity-90"
+                : "bg-red-600 text-white hover:bg-red-700"
+            }`}
+            onClick={() => onSubmit("Sell", qty)}
+          >
+            Sell
+          </button>
+        </div>
+        <div
+          className={`rounded-lg p-3 border transition-colors duration-300 ${
             isDark
-              ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] text-white hover:opacity-90"
-              : "bg-red-600 text-white hover:bg-red-700"
+              ? "bg-gradient-to-br from-[#11423a] to-[#25cb60]/30 border-[#00ff9d]/50"
+              : "bg-green-100 border-green-300"
           }`}
-          onClick={() => handleOrder("Sell")}
         >
-          Sell @ {bid.toFixed(2)}
-        </button>
+          <div
+            className={`text-xs mb-1 transition-colors duration-300 ${
+              isDark ? "text-[#00ff9d]" : "text-green-700"
+            }`}
+          >
+            Buy at
+          </div>
+          <div
+            className={`text-xl font-bold mb-2 transition-colors duration-300 ${
+              isDark ? "text-[#00ff9d]" : "text-green-800"
+            }`}
+          >
+            {ask.toFixed(2)}
+          </div>
+          <div
+            className={`text-xs mb-2 transition-colors duration-300 ${
+              isDark ? "text-[#6b7a99]" : "text-gray-600"
+            }`}
+          >
+            Required margin: $0.20
+          </div>
+          <button
+            className={`w-full rounded-lg py-2 font-semibold shadow-lg transition-colors duration-300 ${
+              isDark
+                ? "bg-gradient-to-r from-[#00ff9d] to-[#00b8ff] text-white hover:opacity-90"
+                : "bg-green-600 text-white hover:bg-green-700"
+            }`}
+            onClick={() => onSubmit("Buy", qty)}
+          >
+            Buy
+          </button>
+        </div>
       </div>
 
       {/* SL/TP Inputs */}

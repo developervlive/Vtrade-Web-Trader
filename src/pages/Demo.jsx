@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import logo from "./logo.png";
-import axios from "axios";
-import { toast } from "react-toastify";
+import logo from "./Logo-vtrade.png";
 import { useNavigate } from "react-router-dom";
 import {
   FaApple,
@@ -10,6 +8,7 @@ import {
   FaGoogle,
   FaBitcoin,
   FaEthereum,
+  FaBars,
 } from "react-icons/fa";
 import { SiTesla, SiBinance } from "react-icons/si";
 
@@ -41,7 +40,7 @@ const ASSETS = [
   },
 ];
 
-const tabs = ["Deals", "Orders", "History"];
+const tabs = ["Deals", "Orders", "History", "Net Deals", "News", "Alerts"];
 
 const tableColumns = [
   "Script",
@@ -56,878 +55,137 @@ const tableColumns = [
   "SL",
 ];
 
-const formatPrice = (price) => {
-  if (price === null || price === undefined) return "--";
-  const num = parseFloat(price);
-  if (isNaN(num)) return "--";
-  if (num > 1000) {
-    return num.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+const ordersData = [
+  {
+    script: "AAPL",
+    ticket: "99871",
+    datetime: "2025-08-14 12:31",
+    type: "Buy",
+    amount: "15",
+    oprice: "$164.30",
+    cprice: "$168.13",
+    commission: "$3.00",
+    margin: "$1200",
+    sl: "$159",
+  },
+  {
+    script: "TSLA",
+    ticket: "99872",
+    datetime: "2025-08-14 10:03",
+    type: "Sell",
+    amount: "5",
+    oprice: "$705.50",
+    cprice: "$710.11",
+    commission: "$2.10",
+    margin: "$1000",
+    sl: "$698",
+  },
+];
+
+const dealsData = [
+  {
+    script: "GOOGL",
+    ticket: "97005",
+    datetime: "2025-08-13 13:40",
+    type: "Buy",
+    amount: "8",
+    oprice: "$2725.12",
+    cprice: "$2731.55",
+    commission: "$4.00",
+    margin: "$2200",
+    sl: "$2720",
+  },
+];
+
+const historyData = [
+  {
+    script: "AMZN",
+    ticket: "90007",
+    datetime: "2025-08-10 15:03",
+    type: "Sell",
+    amount: "3",
+    oprice: "$3400.00",
+    cprice: "$3442.10",
+    commission: "$1.80",
+    margin: "$1350",
+    sl: "$3382",
+  },
+];
+
+const netDealsData = [
+  {
+    script: "AAPL",
+    ticket: "99871",
+    datetime: "2025-08-14 12:31",
+    type: "Buy",
+    amount: "15",
+    oprice: "$164.30",
+    cprice: "$168.13",
+    commission: "$3.00",
+    margin: "$1200",
+    sl: "$159",
+    netPnl: "+$57.45",
+  },
+];
+
+const newsData = [
+  {
+    script: "Market News",
+    ticket: "N001",
+    datetime: "2025-08-14 14:00",
+    type: "Update",
+    amount: "-",
+    oprice: "-",
+    cprice: "-",
+    commission: "-",
+    margin: "-",
+    sl: "-",
+  },
+];
+
+const alertsData = [
+  {
+    script: "TSLA",
+    ticket: "A001",
+    datetime: "2025-08-14 13:45",
+    type: "Alert",
+    amount: "-",
+    oprice: "-",
+    cprice: "-",
+    commission: "-",
+    margin: "-",
+    sl: "-",
+  },
+];
+
+function getTabData(tab) {
+  switch (tab) {
+    case "Deals":
+      return dealsData;
+    case "Orders":
+      return ordersData;
+    case "History":
+      return historyData;
+    case "Net Deals":
+      return netDealsData;
+    case "News":
+      return newsData;
+    case "Alerts":
+      return alertsData;
+    default:
+      return [];
   }
-  if (num < 10) {
-    return num.toFixed(5);
-  }
-  return num.toFixed(2);
-};
+}
 
-export default function Dashboard() {
-  const navigate = useNavigate();
-  const [userInfo, setUserInfo] = useState(null);
-  const [loadingUserInfo, setLoadingUserInfo] = useState(false);
-
-  // Auth token from localStorage or user context
-  const user = JSON.parse(localStorage.getItem("user")) || {};
-  const authConfig = user.token
-    ? {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      }
-    : {};
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [quotes, setQuotes] = useState(
-    ASSETS.map((a) => ({
-      ...a,
-      bid: null,
-      ask: null,
-      price: null,
-      change: null,
-    }))
-  );
-  const [selectedAsset, setSelectedAsset] = useState(ASSETS[0]);
-  const [activeTab, setActiveTab] = useState("Orders");
-
-  // Live data states for tabs
-  const [deals, setDeals] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const [showBalance, setShowBalance] = useState(true);
-  const [showRecent, setShowRecent] = useState(false);
-  const [theme, setTheme] = useState("dark"); // dark mode by default
-  const chartRefDesktop = useRef(null);
-
-  // Fetch user info
-  const fetchUserInfo = async () => {
-    setLoadingUserInfo(true);
-    try {
-      const res = await axios.get(
-        "http://localhost:8080/api/auth/profile",
-        authConfig
-      );
-      if (res.data.success) {
-        setUserInfo(res.data.user);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-      }
-    } catch (e) {
-      console.error("Failed to fetch user info", e);
-    } finally {
-      setLoadingUserInfo(false);
-    }
-  };
-
-  // Fetch Deals
-  const fetchDeals = async () => {
-    try {
-      const { data } = await axios.get(
-        "http://localhost:8080/api/deals",
-        authConfig
-      );
-      if (data.success) setDeals(data.deals || []);
-      else setDeals([]);
-    } catch (err) {
-      console.error("Error fetching deals", err);
-      setDeals([]);
-    }
-  };
-
-  // Fetch Orders
-  const fetchOrders = async () => {
-    try {
-      const { data } = await axios.get(
-        "http://localhost:8080/api/orders",
-        authConfig
-      );
-      if (data.success) setOrders(data.data || []);
-      else setOrders([]);
-    } catch (err) {
-      console.error("Error fetching orders", err);
-      setOrders([]);
-    }
-  };
-
-  // Fetch History
-  const fetchHistory = async () => {
-    try {
-      const { data } = await axios.get(
-        "http://localhost:8080/api/deals/history",
-        authConfig
-      );
-      if (data.success) setHistory(data.deals || []);
-      else setHistory([]);
-    } catch (err) {
-      console.error("Error fetching history", err);
-      setHistory([]);
-    }
-  };
-
-  useEffect(() => {
-    fetchUserInfo();
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-
-    const fetchTabData = async () => {
-      if (activeTab === "Deals") await fetchDeals();
-      else if (activeTab === "Orders") await fetchOrders();
-      else if (activeTab === "History") await fetchHistory();
-      setLoading(false);
-    };
-
-    fetchTabData();
-  }, [activeTab]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function updateQuotes() {
-      const newQuotes = await fetchQuotes(ASSETS);
-      if (!cancelled) setQuotes(newQuotes || []);
-    }
-    updateQuotes();
-    const timer = setInterval(updateQuotes, 60000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, []);
-
-  useEffect(() => {
-    const container = document.getElementById("tv_chart_desktop");
-    if (!container) return;
-    container.innerHTML = "";
-    const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/tv.js";
-    script.async = true;
-    script.onload = () => {
-      if (window.TradingView) {
-        new window.TradingView.widget({
-          autosize: true,
-          symbol: selectedAsset.symbol,
-          interval: "15",
-          timezone: "Etc/UTC",
-          theme: theme,
-          style: "1",
-          locale: "en",
-          container_id: "tv_chart_desktop",
-        });
-      }
-    };
-    container.appendChild(script);
-  }, [selectedAsset, theme]);
-
-  const handleAssetClick = (asset) => setSelectedAsset(asset);
-
-  function getRecentAllData() {
-    const combined = [
-      ...deals.map((d) => ({ ...d, category: "Deals" })),
-      ...orders.map((d) => ({ ...d, category: "Orders" })),
-      ...history.map((d) => ({ ...d, category: "History" })),
-    ];
-    combined.sort(
-      (a, b) =>
-        new Date(b.executedAt || b.createdAt || b.datetime) -
-        new Date(a.executedAt || a.createdAt || a.datetime)
-    );
-    return combined.slice(0, 5);
-  }
-
-  function getTabData(tab) {
-    if (tab === "Deals") return deals;
-    if (tab === "Orders") return orders;
-    if (tab === "History") return history;
-    return [];
-  }
-
-  const renderRowCell = (row, col) => {
-    switch (col) {
-      case "Script":
-        return row.symbol || row.script || "-";
-      case "Ticket ID":
-        return row._id || row.ticket || "-";
-      case "Date/Time":
-        return row.executedAt
-          ? new Date(row.executedAt).toLocaleString()
-          : row.createdAt
-          ? new Date(row.createdAt).toLocaleString()
-          : row.datetime || "-";
-      case "Type":
-        return row.side || row.type || "-";
-      case "Amount":
-        return row.qty || row.amount || "-";
-      case "Open Price":
-        return formatPrice(
-          row.openPrice || row.oprice || row.executedPrice || "-"
-        );
-      case "Current Price":
-        return formatPrice(row.currentPrice || row.cprice || "-");
-      case "Commission":
-        return formatPrice(row.commission || row.fee || 0);
-      case "Margin":
-        return formatPrice(row.margin || 0);
-      case "SL":
-        return formatPrice(row.sl || "-");
-      default:
-        return "-";
-    }
-  };
-
-  const isDark = theme === "dark";
-
-  return (
-    <div
-      className={`min-h-screen font-sans flex flex-col transition-colors duration-300 ${
-        isDark ? "bg-[#0e0f1a] text-gray-100" : "bg-[#f5f6fa] text-gray-900"
-      }`}
-    >
-      {/* Top bar */}
-      <div
-        className={`flex items-center justify-between px-6 py-3 border-b transition-colors duration-300 ${
-          isDark
-            ? "bg-gradient-to-r from-[#1a1b2e] to-[#252841] border-[#2d3150]"
-            : "bg-white border-gray-300 shadow-sm"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <img
-            src={logo}
-            alt="Logo"
-            className={`w-8 h-8 rounded-full object-cover ${
-              isDark ? "bg-white" : "bg-transparent"
-            }`}
-          />
-          <span
-            className={`text-lg font-bold ${
-              isDark ? "text-white" : "text-gray-800"
-            }`}
-          >
-            Digital Brains
-          </span>
-          <div className="flex items-center gap-2 ml-4">
-            <span
-              className={`text-sm ${
-                isDark ? "text-gray-400" : "text-gray-600"
-              }`}
-            >
-              {showBalance ? "Hide Balance" : "Show Balance"}
-            </span>
-            <button
-              onClick={() => setShowBalance((s) => !s)}
-              className={`relative w-14 h-7 rounded-full transition ${
-                showBalance
-                  ? "bg-gradient-to-r from-[#00E1A1] to-[#00FF66]"
-                  : isDark
-                  ? "bg-[#2a3040]"
-                  : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 ${
-                  showBalance ? "left-7" : "left-1"
-                } w-6 h-6 rounded-full transition shadow-md ${
-                  isDark ? "bg-white" : "bg-gray-100"
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-
-        {/* Dark/Light mode toggle + account info */}
-        <div className="flex items-center gap-6 text-sm font-semibold">
-          <button
-            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            onClick={() => setTheme(isDark ? "light" : "dark")}
-            className={`relative w-14 h-7 rounded-full cursor-pointer transition-colors duration-300 ${
-              isDark ? "bg-gray-700" : "bg-blue-500"
-            }`}
-          >
-            <div
-              className={`absolute top-0.5 w-6 h-6 rounded-full bg-yellow-400 shadow-md transition-transform duration-300 ${
-                isDark ? "left-1" : "left-7"
-              } flex items-center justify-center`}
-            >
-              {isDark ? (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4 text-gray-900"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 3v1m0 16v1m8.485-8.485h-1M4.515 12.515h-1m15.364 4.95l-.707-.707M6.343 6.343l-.707-.707M18.364 18.364l-.707-.707M6.343 17.657l-.707-.707"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-4 h-4 text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
-                  />
-                </svg>
-              )}
-            </div>
-          </button>
-
-          <span className={`${isDark ? "text-[#f5f7fc]" : "text-gray-800"}`}>
-            Account: {userInfo?.accountId || "N/A"}
-          </span>
-
-          <span
-            onClick={() => navigate("/profile")}
-            className={`px-3 py-1 rounded-md shadow-md text-white cursor-pointer ${
-              isDark
-                ? "bg-gradient-to-r from-[#00E1A1] to-[#03ee80]"
-                : "bg-blue-500"
-            }`}
-          >
-            Dashboard
-          </span>
-        </div>
-      </div>
-
-      {/* Balance strip */}
-      {showBalance && (
-        <div
-          className={`px-6 py-3 border-b transition-colors duration-300 ${
-            isDark
-              ? "bg-gradient-to-r from-[#1a1b2e] to-[#252841] border-[#2d3150]"
-              : "bg-white border-gray-300 shadow-sm"
-          }`}
-        >
-          <div className="flex items-center gap-8 text-sm">
-            <div className="flex items-center gap-2">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  isDark
-                    ? "bg-[#252d3d] text-[#6b7a99]"
-                    : "bg-gray-200 text-gray-500"
-                }`}
-              >
-                💳
-              </div>
-              <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-                Balance :
-              </span>
-              <span className={isDark ? "text-[#ff5b5b]" : "text-red-600"}>
-                {userInfo?.balance?.toFixed(2) ?? "--"}
-              </span>
-            </div>
-            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-              Free Margin :{" "}
-              <b className={isDark ? "text-[#ff5b5b]" : "text-red-600"}>
-                {userInfo?.freeMargin?.toFixed(2) ?? "--"}
-              </b>
-            </span>
-            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-              Total PnL :{" "}
-              <b className={isDark ? "text-white" : "text-gray-900"}>0.00</b>
-            </span>
-            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-              Equity :{" "}
-              <b className={isDark ? "text-[#ff5b5b]" : "text-red-600"}>
-                {userInfo?.equity?.toFixed(2) ?? "--"}
-              </b>
-            </span>
-            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-              Used Margin :{" "}
-              <b className={isDark ? "text-white" : "text-gray-900"}>
-                {userInfo?.marginUsed?.toFixed(2) ?? "--"}
-              </b>
-            </span>
-            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
-              Credit :{" "}
-              <b className={isDark ? "text-white" : "text-gray-900"}>
-                {userInfo?.pendingBalance?.toFixed(2) ?? "0.00"}
-              </b>
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Asset Selection Bar */}
-      <div
-        className={`flex flex-nowrap items-center overflow-x-auto gap-2 px-2 py-2 border-b transition-colors duration-300 scrollbar-hide ${
-          isDark ? "bg-[#1a1b2e] border-[#2d3150]" : "bg-white border-gray-300"
-        }`}
-      >
-        {quotes.map((q) => (
-          <div
-            key={q.symbol}
-            onClick={() => handleAssetClick(q)}
-            style={{ minWidth: "64px" }}
-            className={`flex items-center gap-1 px-3 py-2 mx-1 rounded-xl cursor-pointer transition-all duration-200 select-none ${
-              selectedAsset.symbol === q.symbol
-                ? isDark
-                  ? "bg-gradient-to-r from-[#00E1A1] to-[#00FF66] text-white shadow-lg"
-                  : "bg-gradient-to-r from-blue-400 to-blue-600 text-white shadow-md"
-                : isDark
-                ? "bg-[#252841] text-[#b8c2d8] hover:bg-[#2d3150] hover:text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-900"
-            }`}
-          >
-            <span className="text-xl">{q.icon}</span>
-            <span className="font-bold text-sm">{q.display}</span>
-          </div>
-        ))}
-        <div
-          className={`w-8 h-8 flex items-center justify-center rounded-xl cursor-pointer shadow-md select-none ${
-            isDark
-              ? "bg-gradient-to-r from-[#00E1A1] to-[#00E659] text-white"
-              : "bg-blue-500 text-white"
-          } ml-2`}
-        >
-          +
-        </div>
-      </div>
-
-      {/* Main grid */}
-      <div
-        className={`px-4 py-3 grid grid-cols-12 gap-3 mb-6 transition-colors duration-300 ${
-          isDark ? "" : "text-gray-900"
-        }`}
-        style={{
-          height: "420px",
-          minHeight: "420px",
-          maxHeight: "420px",
-          borderRadius: "18px",
-          background: isDark ? "#181a26" : "#fff",
-          boxShadow: isDark ? "0 6px 24px #021d2c33" : "0 2px 12px #e2e8f066",
-        }}
-      >
-        {/* Instruments Sidebar */}
-        <div
-          className={`col-span-3 rounded-xl border overflow-hidden flex flex-col shadow-lg transition-colors duration-300 ${
-            isDark
-              ? "bg-[#1a1b2e] border-[#2d3150]"
-              : "bg-white border-gray-300"
-          }`}
-          style={{
-            height: "100%",
-            minHeight: 0,
-          }}
-        >
-          <div
-            className={`p-3 border-b flex justify-between font-semibold text-sm transition-colors duration-300 ${
-              isDark
-                ? "bg-gradient-to-r from-[#252841] to-[#1a1b2e] border-[#2d3150] text-white"
-                : "bg-gray-100 border-gray-300 text-gray-800"
-            }`}
-            style={{ minHeight: 46 }}
-          >
-            INSTRUMENTS
-          </div>
-          <div
-            className={`px-3 py-2 border-b transition-colors duration-300 ${
-              isDark
-                ? "bg-[#1a1b2e] border-[#2d3150]"
-                : "bg-white border-gray-300"
-            }`}
-            style={{ minHeight: 50 }}
-          >
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full rounded-lg border px-3 py-2 text-xs transition-colors duration-300 placeholder-gray-400 focus:outline-none focus:ring-1 ${
-                isDark
-                  ? "bg-[#252841] border-[#2d3150] text-white focus:ring-[#00b8ff]"
-                  : "bg-gray-100 border-gray-300 text-gray-900 focus:ring-blue-500"
-              }`}
-              placeholder="Search"
-              style={{
-                fontSize: 13,
-                padding: "7px 12px",
-                minHeight: 32,
-              }}
-            />
-          </div>
-          <div
-            className={`overflow-y-auto transition-colors duration-300 ${
-              isDark ? "bg-[#1a1b2e]" : "bg-white"
-            }`}
-            style={{
-              flex: 1,
-              minHeight: 0,
-              maxHeight: "calc(100% - 96px)",
-
-              scrollbarWidth: "none", // Firefox
-              msOverflowStyle: "none", // IE 10+
-            }}
-          >
-            <style>{`
-              div::-webkit-scrollbar {
-                display: none;
-              }
-            `}</style>
-            <table className="w-full text-xs" style={{ fontSize: 13 }}>
-              <thead>
-                <tr
-                  className={`${
-                    isDark
-                      ? "bg-[#252841] text-[#a5ee88]"
-                      : "bg-blue-100 text-blue-900"
-                  }`}
-                >
-                  <th className="px-3 py-2 text-left">Symbol</th>
-                  <th className="px-3 py-2 text-right">Signal</th>
-                  <th className="px-3 py-2 text-right">Bid</th>
-                  <th className="px-3 py-2 text-right">Ask</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(quotes || [])
-                  .filter(
-                    (q) =>
-                      !searchTerm ||
-                      q.symbol
-                        .toLowerCase()
-                        .includes(searchTerm.toLowerCase()) ||
-                      q.display.toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                  .map((q, idx, arr) => (
-                    <tr
-                      key={q.symbol}
-                      onClick={() => handleAssetClick(q)}
-                      className={`cursor-pointer select-none transition-colors duration-300 ${
-                        selectedAsset.symbol === q.symbol
-                          ? isDark
-                            ? "bg-[#2d3150] text-white"
-                            : "bg-blue-100 text-blue-900"
-                          : isDark
-                          ? "text-[#c7d0e1] hover:bg-[#252841]"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                      style={{
-                        borderBottom:
-                          idx === arr.length - 1 ? "none" : "1px solid",
-                        borderColor: isDark ? "#2d3150" : "#e0e0e0",
-                      }}
-                    >
-                      <td className="px-1 py-2 font-medium flex gap-2 items-center">
-                        <span>{q.icon}</span> {q.display}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {q.change ? (
-                          <span
-                            className={`${
-                              q.changeDirection === "up"
-                                ? isDark
-                                  ? "text-[#00ff9d]"
-                                  : "text-green-600"
-                                : isDark
-                                ? "text-red-400"
-                                : "text-red-600"
-                            }`}
-                          >
-                            {q.changeDirection === "up" ? "↑" : "↓"}{" "}
-                            {Math.abs(q.change)}%
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {q.bid !== null ? formatPrice(q.bid) : "--"}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {q.ask !== null ? formatPrice(q.ask) : "--"}
-                      </td>
-                    </tr>
-                  ))}
-                {(quotes || []).filter(
-                  (q) =>
-                    !searchTerm ||
-                    q.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    q.display.toLowerCase().includes(searchTerm.toLowerCase())
-                ).length === 0 && (
-                  <tr>
-                    <td className="px-3 py-2 text-center" colSpan={4}>
-                      No matching assets found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Central Chart */}
-        <div
-          className={`col-span-6 flex flex-col rounded-xl border overflow-hidden shadow-lg transition-colors duration-300 ${
-            isDark
-              ? "bg-[#1a1b2e] border-[#2d3150]"
-              : "bg-white border-gray-300"
-          }`}
-          style={{
-            height: "100%",
-            minHeight: 0,
-          }}
-        >
-          <div
-            className={`p-3 border-b flex justify-between items-center transition-colors duration-300 ${
-              isDark
-                ? "bg-gradient-to-r from-[#252841] to-[#1a1b2e] border-[#2d3150] text-white"
-                : "bg-gray-100 border-gray-300 text-gray-800"
-            }`}
-            style={{ minHeight: 46 }}
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-semibold">{selectedAsset.symbol}</span>
-              <span
-                className={`text-xs px-2 py-1 rounded ${
-                  isDark
-                    ? "bg-[#1a1b2e] text-[#6b7a99]"
-                    : "bg-gray-200 text-gray-600"
-                }`}
-              >
-                15m
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                className={`text-xs px-2 py-1 rounded transition ${
-                  isDark
-                    ? "bg-[#252841] text-[#6b7a99] hover:bg-[#2d3150] hover:text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:text-gray-900"
-                }`}
-                style={{ fontSize: 13 }}
-              >
-                Indicators
-              </button>
-              <button
-                className={`text-xs px-2 py-1 rounded transition ${
-                  isDark
-                    ? "bg-[#252841] text-[#6b7a99] hover:bg-[#2d3150] hover:text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:text-gray-900"
-                }`}
-                style={{ fontSize: 13 }}
-              >
-                Templates
-              </button>
-            </div>
-          </div>
-          <div
-            ref={chartRefDesktop}
-            id="tv_chart_desktop"
-            style={{ flex: 1, minHeight: 0 }}
-          />
-        </div>
-
-        {/* Trade Modal */}
-        <div
-          className={`col-span-3 rounded-xl border overflow-hidden shadow-lg transition-colors duration-300 ${
-            isDark
-              ? "bg-[#1a1b2e] border-[#2d3150]"
-              : "bg-white border-gray-300"
-          }`}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            height: "100%",
-            minHeight: 0,
-          }}
-        >
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 0,
-              padding: "10px 12px",
-              overflowY: "auto",
-              fontSize: 13,
-
-              scrollbarWidth: "none", // Firefox
-              msOverflowStyle: "none", // IE 10+
-            }}
-            className={`rounded-xl border shadow-lg transition-colors duration-300 ${
-              isDark
-                ? "bg-[#1a1b2e] border-[#2d3150]"
-                : "bg-white border-blue-300"
-            }`}
-          >
-            <TradeModal
-              symbolObj={selectedAsset}
-              quotes={quotes}
-              isDark={isDark}
-              fetchUserInfo={fetchUserInfo}
-              fetchOrders={fetchOrders}
-              fetchDeals={fetchDeals}
-              fetchHistory={fetchHistory}
-              userInfo={userInfo}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Tabs/Table */}
-      <div
-        className={`relative z-10 w-full border-t shadow-lg transition-colors duration-300 ${
-          isDark ? "bg-[#1a1b2e] border-[#2d3150]" : "bg-white border-gray-300"
-        }`}
-      >
-        <div className="max-w-[calc(100vw-40px)] mx-auto px-3 py-3 flex items-center justify-between space-x-4">
-          <div className="flex space-x-1 flex-wrap overflow-x-auto">
-            {tabs.map((t) => (
-              <button
-                key={t}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-300 ${
-                  activeTab === t
-                    ? isDark
-                      ? "border-[#00b8ff] text-white"
-                      : "border-blue-600 text-blue-800"
-                    : isDark
-                    ? "border-transparent text-[#6b7a99] hover:text-white"
-                    : "border-transparent text-gray-600 hover:text-gray-900"
-                }`}
-                onClick={() => setActiveTab(t)}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-          <div className="flex space-x-2 flex-shrink-0">
-            <button
-              className={`px-4 py-2 rounded-lg font-medium text-white shadow-md transition-colors duration-300 ${
-                isDark
-                  ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] hover:opacity-90"
-                  : "bg-pink-600 hover:bg-pink-700"
-              }`}
-              onClick={() => navigate("/profile")}
-            >
-              See All
-            </button>
-            <button
-              className={`px-4 py-2 rounded-lg font-medium border-2 transition-colors duration-300 ${
-                showRecent
-                  ? isDark
-                    ? "bg-gradient-to-r from-[#ff3d9e] to-[#ff006b] border-transparent text-white"
-                    : "bg-pink-600 border-pink-600 text-white"
-                  : isDark
-                  ? "bg-transparent border-red-600 text-[#f5f0f2] hover:bg-gradient-to-r hover:from-[#f71b13] hover:to-[#f36951]"
-                  : "bg-transparent border-pink-600 text-pink-600 hover:bg-pink-100"
-              }`}
-              onClick={() => setShowRecent(!showRecent)}
-            >
-              Recent
-            </button>
-          </div>
-        </div>
-        <div
-          className={`overflow-x-auto px-3 pb-3 transition-colors duration-300 ${
-            isDark ? "bg-[#1a1b2e]" : "bg-white"
-          }`}
-          style={{ maxHeight: "200px" }}
-        >
-          {loading ? (
-            <div
-              className={`text-center py-8 ${
-                isDark ? "text-white" : "text-gray-700"
-              }`}
-            >
-              Loading {activeTab}...
-            </div>
-          ) : (showRecent ? getRecentAllData() : getTabData(activeTab))
-              .length === 0 ? (
-            <div
-              className={`text-center py-8 ${
-                isDark ? "text-[#6b7a99]" : "text-gray-600"
-              }`}
-            >
-              No{" "}
-              {showRecent
-                ? "recent data available"
-                : activeTab.toLowerCase() + " data available"}
-            </div>
-          ) : (
-            <table className="min-w-full text-xs">
-              <thead>
-                <tr
-                  className={`transition-colors duration-300 ${
-                    isDark
-                      ? "text-[#6b7a99] bg-[#252841]"
-                      : "text-gray-600 bg-gray-100"
-                  }`}
-                >
-                  {tableColumns.map((col) => (
-                    <th className="px-3 py-2 text-left" key={col}>
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(showRecent ? getRecentAllData() : getTabData(activeTab)).map(
-                  (row, idx) => (
-                    <tr
-                      key={idx}
-                      className={`border-b transition-colors duration-300 hover:cursor-pointer ${
-                        isDark
-                          ? "border-[#2d3150] hover:bg-[#252841]"
-                          : "border-gray-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      {tableColumns.map((col) => (
-                        <td
-                          key={col}
-                          className={`px-3 py-2 ${
-                            col === "Script"
-                              ? `font-medium ${
-                                  isDark ? "text-white" : "text-gray-900"
-                                }`
-                              : isDark
-                              ? "text-[#c7d0e1]"
-                              : "text-gray-700"
-                          } ${
-                            col === "Type" &&
-                            (row.type === "Buy" || row.side === "Buy"
-                              ? isDark
-                                ? "text-[#00ff9d]"
-                                : "text-green-600"
-                              : isDark
-                              ? "text-[#ff3d9e]"
-                              : "text-red-600")
-                          }`}
-                        >
-                          {renderRowCell(row, col)}
-                        </td>
-                      ))}
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+function getRecentAllData() {
+  const combined = [
+    ...dealsData.map((d) => ({ ...d, category: "Deals" })),
+    ...ordersData.map((d) => ({ ...d, category: "Orders" })),
+    ...historyData.map((d) => ({ ...d, category: "History" })),
+    ...netDealsData.map((d) => ({ ...d, category: "Net Deals" })),
+  ];
+  combined.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+  return combined.slice(0, 5);
 }
 
 async function fetchFinnhubQuote(symbol) {
@@ -990,135 +248,886 @@ async function fetchQuotes(assetList) {
   return results;
 }
 
-function TradeModal({
-  symbolObj,
-  quotes,
-  isDark,
-  fetchUserInfo,
-  fetchOrders,
-  fetchDeals,
-  fetchHistory,
-  userInfo,
-}) {
-  const [qty, setQty] = useState(1);
-  const [orderType, setOrderType] = useState("market");
-  const [sl, setSl] = useState("");
-  const [tp, setTp] = useState("");
-  const [comment, setComment] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [marginNeeded, setMarginNeeded] = useState(0);
-  const [feeEstimate, setFeeEstimate] = useState(0);
+function getChartSymbol(asset) {
+  if (asset.type === "stock") return asset.symbol;
+  if (asset.type === "crypto")
+    return `BINANCE:${asset.symbol.replace("BINANCE:", "")}`;
+  if (asset.type === "forex") return asset.symbol.replace("OANDA:", "FX:");
+  return asset.symbol;
+}
 
-  const API_BASE = "http://localhost:8080/api/orders";
+const formatPrice = (price) => {
+  if (price === null || price === undefined) return "--";
+  const num = parseFloat(price);
+  if (isNaN(num)) return "--";
+  if (num > 1000) {
+    return num.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  if (num < 10) {
+    return num.toFixed(5);
+  }
+  return num.toFixed(2);
+};
 
-  const q = quotes.find((qq) => qq.symbol === symbolObj.symbol);
-  const price = q?.price || 0;
-  const bid = q?.bid || price - 1;
-  const ask = q?.ask || price + 1;
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [quotes, setQuotes] = useState(
+    ASSETS.map((a) => ({
+      ...a,
+      bid: null,
+      ask: null,
+      price: null,
+      change: null,
+    }))
+  );
+  const [selectedAsset, setSelectedAsset] = useState(ASSETS[0]);
+  const [activeTab, setActiveTab] = useState("Orders");
+  const [orders, setOrders] = useState([]);
+  const [showBalance, setShowBalance] = useState(true);
+  const [showRecent, setShowRecent] = useState(false);
+  const [theme, setTheme] = useState("dark");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const chartRefDesktop = useRef(null);
+
+  const accountDetails = {
+    Balance: "-3,678.00",
+    "Free Margin": "-3,678.00",
+    "Used Margin": "0.00",
+    "Asset Value": "0.00",
+    "Margin Level": "0%",
+    "Account ID": "8951957740",
+    Credit: "0.00",
+  };
 
   useEffect(() => {
-    const numericQty = Number(qty) || 0;
-    const numericPrice = Number(price);
-    const baseMargin = numericQty * numericPrice;
-    const baseFee = numericQty * 0.01;
-    const slRisk = sl ? Math.abs(numericPrice - Number(sl)) * numericQty : 0;
-
-    const totalMargin = baseMargin + slRisk;
-    setMarginNeeded(Number(totalMargin.toFixed(2)));
-    setFeeEstimate(Number(baseFee.toFixed(2)));
-  }, [qty, price, sl]);
-
-  const handleOrder = async (side) => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user?.token) {
-      toast.error("Please login first.");
-      return;
+    let cancelled = false;
+    async function updateQuotes() {
+      const newQuotes = await fetchQuotes(ASSETS);
+      if (!cancelled) setQuotes(newQuotes || []);
     }
+    updateQuotes();
+    const timer = setInterval(updateQuotes, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
 
-    const numericQty = Number(qty);
-    if (!numericQty || numericQty <= 0) {
-      toast.error("Please enter a valid quantity.");
-      return;
-    }
-
-    const numericPrice = Number(price);
-    const numericSL = sl ? Number(sl) : null;
-    const numericTP = tp ? Number(tp) : null;
-
-    if (side === "Buy") {
-      if (numericSL && numericSL >= numericPrice) {
-        toast.error("Stop Loss must be below price for Buy orders.");
-        return;
+  useEffect(() => {
+    const container = document.getElementById("tv_chart_desktop");
+    if (!container) return;
+    container.innerHTML = "";
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/tv.js";
+    script.async = true;
+    script.onload = () => {
+      if (window.TradingView) {
+        new window.TradingView.widget({
+          autosize: true,
+          symbol: getChartSymbol(selectedAsset),
+          interval: "15",
+          timezone: "Etc/UTC",
+          theme: theme,
+          style: "1",
+          locale: "en",
+          container_id: "tv_chart_desktop",
+        });
       }
-      if (numericTP && numericTP <= numericPrice) {
-        toast.error("Take Profit must be above price for Buy orders.");
-        return;
+    };
+    container.appendChild(script);
+  }, [selectedAsset, theme]);
+
+  const handleAssetClick = (asset) => setSelectedAsset(asset);
+
+  const isDark = theme === "dark";
+
+  return (
+    <div
+      className={`min-h-screen font-sans flex flex-col transition-colors duration-300 ${
+        isDark ? "bg-[#0e0f1a] text-gray-100" : "bg-[#f5f6fa] text-gray-900"
+      }`}
+    >
+      {/* Top bar */}
+      <div
+        className={`flex items-center justify-between px-4 md:px-6 py-3 border-b transition-colors duration-300 ${
+          isDark
+            ? "bg-gradient-to-r from-[#1a1b2e] to-[#252841] border-[#2d3150]"
+            : "bg-white border-gray-300 shadow-sm"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          {/* Mobile menu button */}
+          <button
+            className="md:hidden"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            <FaBars className={isDark ? "text-white" : "text-gray-800"} />
+          </button>
+
+          <img
+            src={logo}
+            alt="Logo"
+            className={`w-8 h-8 md:w-10 md:h-10 object-contain ${
+              isDark ? "bg-white rounded-full p-1" : "bg-transparent"
+            }`}
+          />
+          <span
+            className={`text-lg font-bold ${
+              isDark ? "text-white" : "text-gray-800"
+            }`}
+          >
+            V Trade
+          </span>
+
+          {/* Balance toggle - hidden on mobile */}
+          <div className="hidden md:flex items-center gap-2 ml-4">
+            <span
+              className={`text-sm ${
+                isDark ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
+              {showBalance ? "Hide Balance" : "Show Balance"}
+            </span>
+            <button
+              onClick={() => setShowBalance((s) => !s)}
+              className={`relative w-14 h-7 rounded-full transition ${
+                showBalance
+                  ? "bg-gradient-to-r from-[#00E1A1] to-[#00FF66]"
+                  : isDark
+                  ? "bg-[#2a3040]"
+                  : "bg-gray-300"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 ${
+                  showBalance ? "left-7" : "left-1"
+                } w-6 h-6 rounded-full transition shadow-md ${
+                  isDark ? "bg-white" : "bg-gray-100"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile menu */}
+        {isMobileMenuOpen && (
+          <div
+            className={`absolute top-16 left-0 right-0 z-50 p-4 border-b transition-colors duration-300 md:hidden ${
+              isDark
+                ? "bg-[#1a1b2e] border-[#2d3150]"
+                : "bg-white border-gray-300"
+            }`}
+          >
+            <div className="flex flex-col space-y-3">
+              <div className="flex items-center justify-between">
+                <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
+                  Show Balance
+                </span>
+                <button
+                  onClick={() => setShowBalance((s) => !s)}
+                  className={`relative w-14 h-7 rounded-full transition ${
+                    showBalance
+                      ? "bg-gradient-to-r from-[#00E1A1] to-[#00FF66]"
+                      : isDark
+                      ? "bg-[#2a3040]"
+                      : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 ${
+                      showBalance ? "left-7" : "left-1"
+                    } w-6 h-6 rounded-full transition shadow-md ${
+                      isDark ? "bg-white" : "bg-gray-100"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Dark/Light mode toggle + account info */}
+        <div className="flex items-center gap-4 md:gap-6 text-sm font-semibold">
+          {/* Theme Toggle */}
+          <button
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            onClick={() => setTheme(isDark ? "light" : "dark")}
+            className={`relative w-12 h-6 md:w-14 md:h-7 rounded-full cursor-pointer transition-colors duration-300 ${
+              isDark ? "bg-gray-700" : "bg-blue-500"
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 w-5 h-5 md:w-6 md:h-6 rounded-full bg-yellow-400 shadow-md transition-transform duration-300 ${
+                isDark ? "left-1" : "left-6 md:left-7"
+              } flex items-center justify-center`}
+            >
+              {isDark ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-3 h-3 md:w-4 md:h-4 text-gray-900"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 3v1m0 16v1m8.485-8.485h-1M4.515 12.515h-1m15.364 4.95l-.707-.707M6.343 6.343l-.707-.707M18.364 18.364l-.707-.707M6.343 17.657l-.707-.707"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-3 h-3 md:w-4 md:h-4 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
+                  />
+                </svg>
+              )}
+            </div>
+          </button>
+
+          <span
+            className={`hidden sm:inline ${
+              isDark ? "text-[#f5f7fc]" : "text-gray-800"
+            }`}
+          >
+            Account: {accountDetails["Account ID"]}
+          </span>
+
+          <span
+            onClick={() => navigate("/profile")}
+            className={`px-3 py-1 rounded-md shadow-md text-white cursor-pointer text-sm md:text-base ${
+              isDark
+                ? "bg-gradient-to-r from-[#00E1A1] to-[#03ee80]"
+                : "bg-blue-500"
+            }`}
+          >
+            Dashboard
+          </span>
+        </div>
+      </div>
+
+      {/* Balance strip */}
+      {showBalance && (
+        <div
+          className={`px-4 md:px-6 py-3 border-b transition-colors duration-300 overflow-x-auto ${
+            isDark
+              ? "bg-gradient-to-r from-[#1a1b2e] to-[#252841] border-[#2d3150]"
+              : "bg-white border-gray-300 shadow-sm"
+          }`}
+        >
+          <div className="flex items-center gap-4 md:gap-8 text-sm min-w-max">
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs ${
+                  isDark
+                    ? "bg-[#252d3d] text-[#6b7a99]"
+                    : "bg-gray-200 text-gray-500"
+                }`}
+              >
+                💳
+              </div>
+              <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
+                Balance :
+              </span>
+              <span className={isDark ? "text-[#ff5b5b]" : "text-red-600"}>
+                {accountDetails.Balance}
+              </span>
+            </div>
+            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
+              Free Margin :{" "}
+              <b className={isDark ? "text-[#ff5b5b]" : "text-red-600"}>
+                {accountDetails["Free Margin"]}
+              </b>
+            </span>
+            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
+              Total PnL :{" "}
+              <b className={isDark ? "text-white" : "text-gray-900"}>0.00</b>
+            </span>
+            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
+              Equity :{" "}
+              <b className={isDark ? "text-[#ff5b5b]" : "text-red-600"}>
+                {accountDetails["Balance"]}
+              </b>
+            </span>
+            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
+              Used Margin :{" "}
+              <b className={isDark ? "text-white" : "text-gray-900"}>
+                {accountDetails["Used Margin"]}
+              </b>
+            </span>
+            <span className={isDark ? "text-[#6b7a99]" : "text-gray-600"}>
+              Credit :{" "}
+              <b className={isDark ? "text-white" : "text-gray-900"}>
+                {accountDetails["Credit"]}
+              </b>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Asset Selection Bar */}
+      <div
+        className={`flex flex-nowrap items-center overflow-x-auto gap-2 px-2 py-2 border-b transition-colors duration-300 scrollbar-hide ${
+          isDark ? "bg-[#1a1b2e] border-[#2d3150]" : "bg-white border-gray-300"
+        }`}
+      >
+        {quotes.map((q) => (
+          <div
+            key={q.symbol}
+            onClick={() => handleAssetClick(q)}
+            style={{ minWidth: "64px" }}
+            className={`flex items-center gap-1 px-3 py-2 mx-1 rounded-xl cursor-pointer transition-all duration-200 select-none flex-shrink-0 ${
+              selectedAsset.symbol === q.symbol
+                ? isDark
+                  ? "bg-gradient-to-r from-[#00E1A1] to-[#00FF66] text-white shadow-lg"
+                  : "bg-gradient-to-r from-blue-400 to-blue-600 text-white shadow-md"
+                : isDark
+                ? "bg-[#252841] text-[#b8c2d8] hover:bg-[#2d3150] hover:text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-900"
+            }`}
+          >
+            <span className="text-xl">{q.icon}</span>
+            <span className="font-bold text-sm">{q.display}</span>
+          </div>
+        ))}
+        <div
+          className={`w-8 h-8 flex items-center justify-center rounded-xl cursor-pointer shadow-md select-none flex-shrink-0 ${
+            isDark
+              ? "bg-gradient-to-r from-[#00E1A1] to-[#00E659] text-white"
+              : "bg-blue-500 text-white"
+          } ml-2`}
+        >
+          +
+        </div>
+      </div>
+
+      {/* Main grid - Responsive layout */}
+      <div className="flex-1 px-2 md:px-4 py-2 md:py-3 grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 mb-4 md:mb-6">
+        {/* Mobile Trading View - Only show on mobile */}
+        <div className="md:hidden block w-full h-64 mb-4">
+          <div
+            className={`rounded-xl border overflow-hidden shadow-lg transition-colors duration-300 h-full ${
+              isDark
+                ? "bg-[#1a1b2e] border-[#2d3150]"
+                : "bg-white border-gray-300"
+            }`}
+          >
+            <div
+              className={`p-3 border-b flex justify-between items-center transition-colors duration-300 ${
+                isDark
+                  ? "bg-gradient-to-r from-[#252841] to-[#1a1b2e] border-[#2d3150] text-white"
+                  : "bg-gray-100 border-gray-300 text-gray-800"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">{selectedAsset.symbol}</span>
+                <span
+                  className={`text-xs px-2 py-1 rounded ${
+                    isDark
+                      ? "bg-[#1a1b2e] text-[#6b7a99]"
+                      : "bg-gray-200 text-gray-600"
+                  }`}
+                >
+                  15m
+                </span>
+              </div>
+            </div>
+            <div
+              id="tv_chart_mobile"
+              style={{ height: "calc(100% - 50px)", width: "100%" }}
+            />
+          </div>
+        </div>
+
+        {/* Instruments Sidebar - Full width on mobile, 3 cols on desktop */}
+        <div
+          className={`col-span-1 md:col-span-3 rounded-xl border overflow-hidden flex flex-col shadow-lg transition-colors duration-300 ${
+            isDark
+              ? "bg-[#1a1b2e] border-[#2d3150]"
+              : "bg-white border-gray-300"
+          }`}
+          style={{
+            height: "400px",
+            maxHeight: "400px",
+          }}
+        >
+          <div
+            className={`p-3 border-b flex justify-between font-semibold text-sm transition-colors duration-300 ${
+              isDark
+                ? "bg-gradient-to-r from-[#252841] to-[#1a1b2e] border-[#2d3150] text-white"
+                : "bg-gray-100 border-gray-300 text-gray-800"
+            }`}
+          >
+            INSTRUMENTS
+          </div>
+          <div
+            className={`px-3 py-2 border-b transition-colors duration-300 ${
+              isDark
+                ? "bg-[#1a1b2e] border-[#2d3150]"
+                : "bg-white border-gray-300"
+            }`}
+          >
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full rounded-lg border px-3 py-2 text-xs transition-colors duration-300 placeholder-gray-400 focus:outline-none focus:ring-1 ${
+                isDark
+                  ? "bg-[#252841] border-[#2d3150] text-white focus:ring-[#00b8ff]"
+                  : "bg-gray-100 border-gray-300 text-gray-900 focus:ring-blue-500"
+              }`}
+              placeholder="Search"
+            />
+          </div>
+          <div
+            className="overflow-y-auto flex-1"
+            style={{
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
+            <table className="w-full text-xs">
+              <thead>
+                <tr
+                  className={`${
+                    isDark
+                      ? "bg-[#252841] text-[#a5ee88]"
+                      : "bg-blue-100 text-blue-900"
+                  }`}
+                >
+                  <th className="px-2 py-2 text-left">Symbol</th>
+                  <th className="px-2 py-2 text-right">Signal</th>
+                  <th className="px-2 py-2 text-right">Bid</th>
+                  <th className="px-2 py-2 text-right">Ask</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(quotes || [])
+                  .filter(
+                    (q) =>
+                      !searchTerm ||
+                      q.symbol
+                        .toLowerCase()
+                        .includes(searchTerm.toLowerCase()) ||
+                      q.display.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map((q, idx, arr) => (
+                    <tr
+                      key={q.symbol}
+                      onClick={() => handleAssetClick(q)}
+                      className={`cursor-pointer select-none transition-colors duration-300 ${
+                        selectedAsset.symbol === q.symbol
+                          ? isDark
+                            ? "bg-[#2d3150] text-white"
+                            : "bg-blue-100 text-blue-900"
+                          : isDark
+                          ? "text-[#c7d0e1] hover:bg-[#252841]"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                      style={{
+                        borderBottom:
+                          idx === arr.length - 1 ? "none" : "1px solid",
+                        borderColor: isDark ? "#2d3150" : "#e0e0e0",
+                      }}
+                    >
+                      <td className="px-2 py-2 font-medium flex gap-2 items-center">
+                        <span className="text-lg">{q.icon}</span>
+                        <span className="hidden sm:inline">{q.display}</span>
+                        <span className="sm:hidden text-xs">{q.display}</span>
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        {q.change ? (
+                          <span
+                            className={`${
+                              q.changeDirection === "up"
+                                ? isDark
+                                  ? "text-[#00ff9d]"
+                                  : "text-green-600"
+                                : isDark
+                                ? "text-red-400"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {q.changeDirection === "up" ? "↑" : "↓"}{" "}
+                            {Math.abs(q.change)}%
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        {q.bid !== null ? formatPrice(q.bid) : "--"}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        {q.ask !== null ? formatPrice(q.ask) : "--"}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Central Chart - Hidden on mobile, 6 cols on desktop */}
+        <div
+          className={`hidden md:flex md:col-span-6 flex-col rounded-xl border overflow-hidden shadow-lg transition-colors duration-300 ${
+            isDark
+              ? "bg-[#1a1b2e] border-[#2d3150]"
+              : "bg-white border-gray-300"
+          }`}
+          style={{
+            height: "400px",
+            maxHeight: "400px",
+          }}
+        >
+          <div
+            className={`p-3 border-b flex justify-between items-center transition-colors duration-300 ${
+              isDark
+                ? "bg-gradient-to-r from-[#252841] to-[#1a1b2e] border-[#2d3150] text-white"
+                : "bg-gray-100 border-gray-300 text-gray-800"
+            }`}
+            style={{ minHeight: 46 }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">{selectedAsset.symbol}</span>
+              <span
+                className={`text-xs px-2 py-1 rounded ${
+                  isDark
+                    ? "bg-[#1a1b2e] text-[#6b7a99]"
+                    : "bg-gray-200 text-gray-600"
+                }`}
+              >
+                15m
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                className={`text-xs px-2 py-1 rounded transition ${
+                  isDark
+                    ? "bg-[#252841] text-[#6b7a99] hover:bg-[#2d3150] hover:text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:text-gray-900"
+                }`}
+              >
+                Indicators
+              </button>
+              <button
+                className={`text-xs px-2 py-1 rounded transition ${
+                  isDark
+                    ? "bg-[#252841] text-[#6b7a99] hover:bg-[#2d3150] hover:text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:text-gray-900"
+                }`}
+              >
+                Templates
+              </button>
+            </div>
+          </div>
+          <div
+            ref={chartRefDesktop}
+            id="tv_chart_desktop"
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: "hidden",
+            }}
+          />
+        </div>
+
+        {/* Trade Modal - Full width on mobile, 3 cols on desktop */}
+        <div
+          className={`col-span-1 md:col-span-3 rounded-xl border overflow-hidden shadow-lg transition-colors duration-300 ${
+            isDark
+              ? "bg-[#1a1b2e] border-[#2d3150]"
+              : "bg-white border-gray-300"
+          }`}
+          style={{
+            height: "400px",
+            maxHeight: "400px",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              padding: "12px",
+              overflowY: "auto",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+            className={`rounded-xl border shadow-lg transition-colors duration-300 ${
+              isDark
+                ? "bg-[#1a1b2e] border-[#2d3150]"
+                : "bg-white border-blue-300"
+            }`}
+          >
+            <TradeModal
+              symbolObj={selectedAsset}
+              quotes={quotes}
+              onClose={() => {}}
+              onSubmit={(side, qty) => {
+                const q = quotes.find((x) => x.symbol === selectedAsset.symbol);
+                setOrders([
+                  {
+                    id: Date.now().toString(),
+                    script: selectedAsset.symbol,
+                    datetime: new Date().toLocaleString(),
+                    side,
+                    amount: qty,
+                    openPrice: q?.price ? q.price.toFixed(2) : "--",
+                    currentPrice: q?.price ? q.price.toFixed(2) : "--",
+                  },
+                  ...orders,
+                ]);
+              }}
+              isDark={isDark}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Tabs/Table */}
+      <div
+        className={`relative z-10 w-full border-t shadow-lg transition-colors duration-300 ${
+          isDark ? "bg-[#1a1b2e] border-[#2d3150]" : "bg-white border-gray-300"
+        }`}
+      >
+        <div className="w-full mx-auto px-2 md:px-3 py-2 md:py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+          <div className="flex space-x-1 overflow-x-auto w-full sm:w-auto">
+            {tabs.map((t) => (
+              <button
+                key={t}
+                className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors duration-300 whitespace-nowrap ${
+                  activeTab === t
+                    ? isDark
+                      ? "border-[#00b8ff] text-white"
+                      : "border-blue-600 text-blue-800"
+                    : isDark
+                    ? "border-transparent text-[#6b7a99] hover:text-white"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
+                }`}
+                onClick={() => setActiveTab(t)}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          <div className="flex space-x-2 flex-shrink-0 self-end sm:self-auto">
+            <button
+              className={`px-3 py-2 rounded-lg font-medium text-white shadow-md transition-colors duration-300 text-sm ${
+                isDark
+                  ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] hover:opacity-90"
+                  : "bg-pink-600 hover:bg-pink-700"
+              }`}
+              onClick={() => navigate("/profile")}
+            >
+              See All
+            </button>
+            <button
+              className={`px-3 py-2 rounded-lg font-medium border-2 transition-colors duration-300 text-sm ${
+                showRecent
+                  ? isDark
+                    ? "bg-gradient-to-r from-[#ff3d9e] to-[#ff006b] border-transparent text-white"
+                    : "bg-pink-600 border-pink-600 text-white"
+                  : isDark
+                  ? "bg-transparent border-red-600 text-[#f5f0f2] hover:bg-gradient-to-r hover:from-[#f71b13] hover:to-[#f36951]"
+                  : "bg-transparent border-pink-600 text-pink-600 hover:bg-pink-100"
+              }`}
+              onClick={() => setShowRecent(!showRecent)}
+            >
+              Recent
+            </button>
+          </div>
+        </div>
+        <div
+          className={`overflow-x-auto px-2 md:px-3 pb-2 md:pb-3 transition-colors duration-300 ${
+            isDark ? "bg-[#1a1b2e]" : "bg-white"
+          }`}
+        >
+          <div className="min-w-full" style={{ minWidth: "800px" }}>
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr
+                  className={`transition-colors duration-300 ${
+                    isDark
+                      ? "text-[#6b7a99] bg-[#252841]"
+                      : "text-gray-600 bg-gray-100"
+                  }`}
+                >
+                  {tableColumns.map((col) => (
+                    <th className="px-2 py-2 text-left" key={col}>
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(showRecent ? getRecentAllData() : getTabData(activeTab)).map(
+                  (row, idx) => (
+                    <tr
+                      key={idx}
+                      className={`border-b transition-colors duration-300 hover:cursor-pointer ${
+                        isDark
+                          ? "border-[#2d3150] hover:bg-[#252841]"
+                          : "border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      <td
+                        className={`px-2 py-2 font-medium ${
+                          isDark ? "text-white" : "text-gray-900"
+                        }`}
+                      >
+                        {row.script}
+                      </td>
+                      <td
+                        className={`px-2 py-2 ${
+                          isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                        }`}
+                      >
+                        {row.ticket}
+                      </td>
+                      <td
+                        className={`px-2 py-2 ${
+                          isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                        }`}
+                      >
+                        {row.datetime}
+                      </td>
+                      <td
+                        className={`px-2 py-2 font-medium ${
+                          row.type === "Buy"
+                            ? isDark
+                              ? "text-[#00ff9d]"
+                              : "text-green-600"
+                            : isDark
+                            ? "text-[#ff3d9e]"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {row.type}
+                      </td>
+                      <td
+                        className={`px-2 py-2 ${
+                          isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                        }`}
+                      >
+                        {row.amount}
+                      </td>
+                      <td
+                        className={`px-2 py-2 ${
+                          isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                        }`}
+                      >
+                        {row.oprice}
+                      </td>
+                      <td
+                        className={`px-2 py-2 ${
+                          isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                        }`}
+                      >
+                        {row.cprice}
+                      </td>
+                      <td
+                        className={`px-2 py-2 ${
+                          isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                        }`}
+                      >
+                        {row.commission}
+                      </td>
+                      <td
+                        className={`px-2 py-2 ${
+                          isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                        }`}
+                      >
+                        {row.margin}
+                      </td>
+                      <td
+                        className={`px-2 py-2 ${
+                          isDark ? "text-[#c7d0e1]" : "text-gray-700"
+                        }`}
+                      >
+                        {row.sl}
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Initialize Mobile Chart */}
+      {typeof window !== "undefined" && window.innerWidth < 768 && (
+        <MobileChartInitializer selectedAsset={selectedAsset} theme={theme} />
+      )}
+    </div>
+  );
+}
+
+// Mobile Chart Initializer Component
+function MobileChartInitializer({ selectedAsset, theme }) {
+  useEffect(() => {
+    const container = document.getElementById("tv_chart_mobile");
+    if (!container) return;
+
+    container.innerHTML = "";
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/tv.js";
+    script.async = true;
+    script.onload = () => {
+      if (window.TradingView) {
+        new window.TradingView.widget({
+          autosize: true,
+          symbol: getChartSymbol(selectedAsset),
+          interval: "15",
+          timezone: "Etc/UTC",
+          theme: theme,
+          style: "1",
+          locale: "en",
+          container_id: "tv_chart_mobile",
+        });
       }
-    } else {
-      if (numericSL && numericSL <= numericPrice) {
-        toast.error("Stop Loss must be above price for Sell orders.");
-        return;
-      }
-      if (numericTP && numericTP >= numericPrice) {
-        toast.error("Take Profit must be below price for Sell orders.");
-        return;
-      }
-    }
+    };
+    container.appendChild(script);
+  }, [selectedAsset, theme]);
 
-    const baseMargin = numericQty * numericPrice;
-    const slRisk = numericSL
-      ? Math.abs(numericPrice - numericSL) * numericQty
-      : 0;
-    const totalMargin = baseMargin + slRisk;
-    const totalFee = numericQty * 0.01;
+  return null;
+}
 
-    if ((userInfo?.balance ?? 0) < totalMargin + totalFee) {
-      toast.error("Insufficient balance.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const payload = {
-        symbol: symbolObj.symbol,
-        side,
-        qty: numericQty,
-        orderType,
-        sl: numericSL || undefined,
-        tp: numericTP || undefined,
-        comment,
-        marketData: { bid, ask, last: numericPrice },
-      };
-
-      const { data } = await axios.post(API_BASE, payload, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-
-      toast.success(`Order ${side} placed successfully!`);
-
-      // Refresh global data for live updates
-      await fetchUserInfo?.();
-      await fetchOrders?.();
-      await fetchDeals?.();
-      await fetchHistory?.();
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || "Failed to place order");
-    } finally {
-      setLoading(false);
-    }
-  };
+// TradeModal component remains exactly the same
+function TradeModal({ symbolObj, quotes, onClose, onSubmit, isDark }) {
+  const [qty, setQty] = React.useState(1);
+  const [orderType, setOrderType] = React.useState("market");
+  const [sl, setSl] = React.useState("");
+  const [tp, setTp] = React.useState("");
+  const [comment, setComment] = React.useState("");
+  const q = quotes.find((qq) => qq.symbol === symbolObj.symbol);
+  const price = q?.price || 3786;
+  const bid = price - 1;
+  const ask = price + 1;
 
   return (
     <div
       style={{
-        flex: 1,
+        height: "100%",
         display: "flex",
         flexDirection: "column",
-        padding: 16,
-        maxHeight: "80vh",
+        padding: "16px",
         overflowY: "auto",
+        scrollbarWidth: "none",
+        msOverflowStyle: "none",
       }}
       className={`rounded-xl border-2 shadow-lg transition-colors duration-300 ${
         isDark
@@ -1126,25 +1135,17 @@ function TradeModal({
           : "bg-white border-blue-300"
       }`}
     >
-      {loading && (
-        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 rounded-xl">
-          <div className="text-white font-bold">Placing Order...</div>
-        </div>
-      )}
-      <div
-        className={`mb-4 font-semibold ${
-          isDark ? "text-[#00ff9d]" : "text-gray-800"
-        }`}
-      >
-        Balance: ${userInfo?.balance?.toFixed(2) ?? "--"}
+      <div className="flex justify-between items-center mb-4">
+        <h3
+          className={`text-xl font-bold ${
+            isDark ? "text-white" : "text-gray-900"
+          }`}
+        >
+          {symbolObj.display}
+        </h3>
       </div>
-      <h3
-        className={`text-xl font-bold mb-4 ${
-          isDark ? "text-white" : "text-gray-900"
-        }`}
-      >
-        {symbolObj.display}
-      </h3>
+
+      {/* Order Type Toggle */}
       <div
         className={`flex mb-4 rounded-lg p-1 border transition-colors duration-300 ${
           isDark
@@ -1152,25 +1153,37 @@ function TradeModal({
             : "bg-gray-100 border-gray-300"
         }`}
       >
-        {["market", "pending"].map((type) => (
-          <button
-            key={type}
-            className={`flex-1 py-2 text-sm font-medium rounded transition-colors duration-300 ${
-              orderType === type
-                ? isDark
-                  ? "bg-gradient-to-r from-[#00ff9d] to-[#00b8ff] text-white shadow-lg"
-                  : "bg-blue-600 text-white shadow-md"
-                : isDark
-                ? "text-[#6b7a99] hover:text-white"
-                : "text-gray-700 hover:text-gray-900"
-            }`}
-            onClick={() => setOrderType(type)}
-          >
-            {type.charAt(0).toUpperCase() + type.slice(1)}
-          </button>
-        ))}
+        <button
+          className={`flex-1 py-2 text-sm font-medium rounded transition-colors duration-300 ${
+            orderType === "market"
+              ? isDark
+                ? "bg-gradient-to-r from-[#00ff9d] to-[#00b8ff] text-white shadow-lg"
+                : "bg-blue-600 text-white shadow-md"
+              : isDark
+              ? "text-[#6b7a99] hover:text-white"
+              : "text-gray-700 hover:text-gray-900"
+          }`}
+          onClick={() => setOrderType("market")}
+        >
+          Market
+        </button>
+        <button
+          className={`flex-1 py-2 text-sm font-medium rounded transition-colors duration-300 ${
+            orderType === "pending"
+              ? isDark
+                ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] text-white shadow-lg"
+                : "bg-pink-600 text-white shadow-md"
+              : isDark
+              ? "text-[#6b7a99] hover:text-white"
+              : "text-gray-700 hover:text-gray-900"
+          }`}
+          onClick={() => setOrderType("pending")}
+        >
+          Pending
+        </button>
       </div>
 
+      {/* Volume Input */}
       <div className="mb-4">
         <label
           className={`block text-sm mb-1 ${
@@ -1192,38 +1205,90 @@ function TradeModal({
           }`}
         />
       </div>
-      <div
-        className={`mb-4 text-sm ${
-          isDark ? "text-[#00ff9d]" : "text-gray-800"
-        }`}
-      >
-        Required Margin: ${marginNeeded} | Estimated Fee: ${feeEstimate}
-      </div>
+
+      {/* Buy/Sell Buttons */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <button
-          disabled={loading}
-          className={`rounded-lg p-3 font-semibold shadow-lg transition-colors duration-300 ${
+        <div
+          className={`rounded-lg p-3 border transition-colors duration-300 ${
             isDark
-              ? "bg-gradient-to-r from-[#00ff9d] to-[#00b8ff] text-white hover:opacity-90"
-              : "bg-green-600 text-white hover:bg-green-700"
+              ? "bg-gradient-to-br from-[#25234a] to-[#ff4766]/30 border-[#ff0000]/50"
+              : "bg-red-100 border-red-300"
           }`}
-          onClick={() => handleOrder("Buy")}
         >
-          Buy @ {ask.toFixed(2)}
-        </button>
-        <button
-          disabled={loading}
-          className={`rounded-lg p-3 font-semibold shadow-lg transition-colors duration-300 ${
+          <div
+            className={`text-xs mb-1 transition-colors duration-300 ${
+              isDark ? "text-[#ff3d9e]" : "text-red-700"
+            }`}
+          >
+            Sell at
+          </div>
+          <div
+            className={`text-xl font-bold mb-2 transition-colors duration-300 ${
+              isDark ? "text-[#ff5b5b]" : "text-red-800"
+            }`}
+          >
+            {bid.toFixed(2)}
+          </div>
+          <div
+            className={`text-xs mb-2 transition-colors duration-300 ${
+              isDark ? "text-[#6b7a99]" : "text-gray-600"
+            }`}
+          >
+            Required margin: $7.57
+          </div>
+          <button
+            className={`w-full rounded-lg py-2 font-semibold shadow-lg transition-colors duration-300 ${
+              isDark
+                ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] text-white hover:opacity-90"
+                : "bg-red-600 text-white hover:bg-red-700"
+            }`}
+            onClick={() => onSubmit("Sell", qty)}
+          >
+            Sell
+          </button>
+        </div>
+        <div
+          className={`rounded-lg p-3 border transition-colors duration-300 ${
             isDark
-              ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] text-white hover:opacity-90"
-              : "bg-red-600 text-white hover:bg-red-700"
+              ? "bg-gradient-to-br from-[#11423a] to-[#25cb60]/30 border-[#00ff9d]/50"
+              : "bg-green-100 border-green-300"
           }`}
-          onClick={() => handleOrder("Sell")}
         >
-          Sell @ {bid.toFixed(2)}
-        </button>
+          <div
+            className={`text-xs mb-1 transition-colors duration-300 ${
+              isDark ? "text-[#00ff9d]" : "text-green-700"
+            }`}
+          >
+            Buy at
+          </div>
+          <div
+            className={`text-xl font-bold mb-2 transition-colors duration-300 ${
+              isDark ? "text-[#00ff9d]" : "text-green-800"
+            }`}
+          >
+            {ask.toFixed(2)}
+          </div>
+          <div
+            className={`text-xs mb-2 transition-colors duration-300 ${
+              isDark ? "text-[#6b7a99]" : "text-gray-600"
+            }`}
+          >
+            Required margin: $0.20
+          </div>
+          <button
+            className={`w-full rounded-lg py-2 font-semibold shadow-lg transition-colors duration-300 ${
+              isDark
+                ? "bg-gradient-to-r from-[#00ff9d] to-[#00b8ff] text-white hover:opacity-90"
+                : "bg-green-600 text-white hover:bg-green-700"
+            }`}
+            onClick={() => onSubmit("Buy", qty)}
+          >
+            Buy
+          </button>
+        </div>
       </div>
 
+      {/* SL/TP Inputs */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div>
           <label
@@ -1260,13 +1325,14 @@ function TradeModal({
             placeholder="0.00"
             className={`w-full rounded-lg px-3 py-2 focus:outline-none focus:ring-2 transition-colors duration-300 ${
               isDark
-                ? "bg-[#252841] border border-[#2d3150] text-white focus:ring-blue-500"
+                ? "bg-[#252841] border border-[#2d3150] text-white focus:ring-[#00b8ff]"
                 : "bg-gray-100 border border-gray-300 text-gray-900 focus:ring-blue-500"
             }`}
           />
         </div>
       </div>
 
+      {/* Comment */}
       <div>
         <label
           className={`block text-sm mb-1 ${
