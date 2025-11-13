@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import logo from "./Logo-vtrade.png";
+import logoBlack from "./Logo-vtrade-black.png";
+import logoWhite from "./Logo-VTrade-White.png";
 import { useNavigate } from "react-router-dom";
 import {
   FaApple,
@@ -303,6 +304,13 @@ export default function Dashboard() {
     Credit: "0.00",
   };
 
+  // Logout functionality
+  const handleLogout = () => {
+    // For now, just navigate to login page
+    // Later we'll integrate API logout
+    navigate("/");
+  };
+
   useEffect(() => {
     let cancelled = false;
     async function updateQuotes() {
@@ -368,20 +376,19 @@ export default function Dashboard() {
             <FaBars className={isDark ? "text-white" : "text-gray-800"} />
           </button>
 
+          {/* Logo - using logo-white for dark mode and logo-dark for light mode */}
           <img
-            src={logo}
-            alt="Logo"
-            className={`w-8 h-8 md:w-10 md:h-10 object-contain ${
-              isDark ? "bg-white rounded-full p-1" : "bg-transparent"
-            }`}
+            src={isDark ? logoWhite : logoBlack}
+            alt="V Trade Logo"
+            className="w-8 h-8 md:w-10 md:h-10 object-contain"
           />
-          <span
+          {/* <span
             className={`text-lg font-bold ${
               isDark ? "text-white" : "text-gray-800"
             }`}
           >
             V Trade
-          </span>
+          </span> */}
 
           {/* Balance toggle - hidden on mobile */}
           <div className="hidden md:flex items-center gap-2 ml-4">
@@ -396,7 +403,7 @@ export default function Dashboard() {
               onClick={() => setShowBalance((s) => !s)}
               className={`relative w-14 h-7 rounded-full transition ${
                 showBalance
-                  ? "bg-gradient-to-r from-[#00E1A1] to-[#00FF66]"
+                  ? "bg-[#FF6000]"
                   : isDark
                   ? "bg-[#2a3040]"
                   : "bg-gray-300"
@@ -431,7 +438,7 @@ export default function Dashboard() {
                   onClick={() => setShowBalance((s) => !s)}
                   className={`relative w-14 h-7 rounded-full transition ${
                     showBalance
-                      ? "bg-gradient-to-r from-[#00E1A1] to-[#00FF66]"
+                      ? "bg-[#FF6000]"
                       : isDark
                       ? "bg-[#2a3040]"
                       : "bg-gray-300"
@@ -507,16 +514,13 @@ export default function Dashboard() {
             Account: {accountDetails["Account ID"]}
           </span>
 
-          <span
-            onClick={() => navigate("/profile")}
-            className={`px-3 py-1 rounded-md shadow-md text-white cursor-pointer text-sm md:text-base ${
-              isDark
-                ? "bg-gradient-to-r from-[#00E1A1] to-[#03ee80]"
-                : "bg-blue-500"
-            }`}
+          {/* Logout Button - Replaced Dashboard button */}
+          <button
+            onClick={handleLogout}
+            className={`px-3 py-1 rounded-md shadow-md text-white cursor-pointer text-sm md:text-base bg-[#FF6000] hover:bg-[#FF6000]/90 transition-colors duration-300`}
           >
-            Dashboard
-          </span>
+            Logout
+          </button>
         </div>
       </div>
 
@@ -593,8 +597,8 @@ export default function Dashboard() {
             className={`flex items-center gap-1 px-3 py-2 mx-1 rounded-xl cursor-pointer transition-all duration-200 select-none flex-shrink-0 ${
               selectedAsset.symbol === q.symbol
                 ? isDark
-                  ? "bg-gradient-to-r from-[#00E1A1] to-[#00FF66] text-white shadow-lg"
-                  : "bg-gradient-to-r from-blue-400 to-blue-600 text-white shadow-md"
+                  ? "bg-[#FF6000] text-white shadow-lg"
+                  : "bg-[#FF6000] text-white shadow-md"
                 : isDark
                 ? "bg-[#252841] text-[#b8c2d8] hover:bg-[#2d3150] hover:text-white"
                 : "bg-gray-100 text-gray-700 hover:bg-blue-100 hover:text-blue-900"
@@ -606,9 +610,7 @@ export default function Dashboard() {
         ))}
         <div
           className={`w-8 h-8 flex items-center justify-center rounded-xl cursor-pointer shadow-md select-none flex-shrink-0 ${
-            isDark
-              ? "bg-gradient-to-r from-[#00E1A1] to-[#00E659] text-white"
-              : "bg-blue-500 text-white"
+            isDark ? "bg-[#FF6000] text-white" : "bg-[#FF6000] text-white"
           } ml-2`}
         >
           +
@@ -927,8 +929,8 @@ export default function Dashboard() {
             <button
               className={`px-3 py-2 rounded-lg font-medium text-white shadow-md transition-colors duration-300 text-sm ${
                 isDark
-                  ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] hover:opacity-90"
-                  : "bg-pink-600 hover:bg-pink-700"
+                  ? "bg-[#FF6000] hover:bg-[#FF6000]/90"
+                  : "bg-[#FF6000] hover:bg-[#FF6000]/90"
               }`}
               onClick={() => navigate("/profile")}
             >
@@ -938,10 +940,10 @@ export default function Dashboard() {
               className={`px-3 py-2 rounded-lg font-medium border-2 transition-colors duration-300 text-sm ${
                 showRecent
                   ? isDark
-                    ? "bg-gradient-to-r from-[#ff3d9e] to-[#ff006b] border-transparent text-white"
-                    : "bg-pink-600 border-pink-600 text-white"
+                    ? "bg-[#FF6000] border-transparent text-white"
+                    : "bg-[#FF6000] border-[#FF6000] text-white"
                   : isDark
-                  ? "bg-transparent border-red-600 text-[#f5f0f2] hover:bg-gradient-to-r hover:from-[#f71b13] hover:to-[#f36951]"
+                  ? "bg-transparent border-red-600 text-[#f5f0f2] hover:bg-[#FF6000]"
                   : "bg-transparent border-pink-600 text-pink-600 hover:bg-pink-100"
               }`}
               onClick={() => setShowRecent(!showRecent)}
@@ -1008,10 +1010,10 @@ export default function Dashboard() {
                         className={`px-2 py-2 font-medium ${
                           row.type === "Buy"
                             ? isDark
-                              ? "text-[#00ff9d]"
+                              ? "text-green-600"
                               : "text-green-600"
                             : isDark
-                            ? "text-[#ff3d9e]"
+                            ? "text-red-600"
                             : "text-red-600"
                         }`}
                       >
@@ -1157,8 +1159,8 @@ function TradeModal({ symbolObj, quotes, onClose, onSubmit, isDark }) {
           className={`flex-1 py-2 text-sm font-medium rounded transition-colors duration-300 ${
             orderType === "market"
               ? isDark
-                ? "bg-gradient-to-r from-[#00ff9d] to-[#00b8ff] text-white shadow-lg"
-                : "bg-blue-600 text-white shadow-md"
+                ? "bg-[#FF6000] text-white shadow-lg"
+                : "bg-[#FF6000] text-white shadow-md"
               : isDark
               ? "text-[#6b7a99] hover:text-white"
               : "text-gray-700 hover:text-gray-900"
@@ -1171,8 +1173,8 @@ function TradeModal({ symbolObj, quotes, onClose, onSubmit, isDark }) {
           className={`flex-1 py-2 text-sm font-medium rounded transition-colors duration-300 ${
             orderType === "pending"
               ? isDark
-                ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] text-white shadow-lg"
-                : "bg-pink-600 text-white shadow-md"
+                ? "bg-[#FF6000] text-white shadow-lg"
+                : "bg-[#FF6000] text-white shadow-md"
               : isDark
               ? "text-[#6b7a99] hover:text-white"
               : "text-gray-700 hover:text-gray-900"
@@ -1239,7 +1241,7 @@ function TradeModal({ symbolObj, quotes, onClose, onSubmit, isDark }) {
           <button
             className={`w-full rounded-lg py-2 font-semibold shadow-lg transition-colors duration-300 ${
               isDark
-                ? "bg-gradient-to-r from-[#f71b13] to-[#f36951] text-white hover:opacity-90"
+                ? "bg-red-600 text-white hover:bg-red-700"
                 : "bg-red-600 text-white hover:bg-red-700"
             }`}
             onClick={() => onSubmit("Sell", qty)}
@@ -1278,7 +1280,7 @@ function TradeModal({ symbolObj, quotes, onClose, onSubmit, isDark }) {
           <button
             className={`w-full rounded-lg py-2 font-semibold shadow-lg transition-colors duration-300 ${
               isDark
-                ? "bg-gradient-to-r from-[#00ff9d] to-[#00b8ff] text-white hover:opacity-90"
+                ? "bg-green-600 text-white hover:bg-green-700"
                 : "bg-green-600 text-white hover:bg-green-700"
             }`}
             onClick={() => onSubmit("Buy", qty)}

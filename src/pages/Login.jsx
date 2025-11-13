@@ -57,9 +57,9 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#0e0f1a] via-[#1a1b2e] to-[#252841] flex items-center justify-center p-4 font-sans">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-[#00E1A1]/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-[#03ee80]/10 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#00E1A1]/5 rounded-full blur-3xl"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-[#FF6000]/10 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-[#FF6000]/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#FF6000]/5 rounded-full blur-3xl"></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">
@@ -72,7 +72,7 @@ const Login = () => {
                 alt="V Trade Logo"
                 className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#00E1A1]/20 to-[#03ee80]/20 rounded-full blur-sm"></div>
+              <div className="absolute inset-0 bg-[#FF6000]/20 rounded-full blur-sm"></div>
             </div>
           </div>
         </div>
@@ -85,7 +85,7 @@ const Login = () => {
               onClick={() => setView("login")}
               className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all duration-300 ${
                 view === "login"
-                  ? "bg-gradient-to-r from-[#00E1A1] to-[#03ee80] text-black shadow-lg shadow-[#00E1A1]/20"
+                  ? "bg-[#FF6000] text-white shadow-lg shadow-[#FF6000]/20"
                   : "text-[#6b7a99] hover:text-white"
               }`}
             >
@@ -95,7 +95,7 @@ const Login = () => {
               onClick={() => setView("signup")}
               className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all duration-300 ${
                 view === "signup"
-                  ? "bg-gradient-to-r from-[#00E1A1] to-[#03ee80] text-black shadow-lg shadow-[#00E1A1]/20"
+                  ? "bg-[#FF6000] text-white shadow-lg shadow-[#FF6000]/20"
                   : "text-[#6b7a99] hover:text-white"
               }`}
             >
@@ -116,10 +116,10 @@ const Login = () => {
                     placeholder="Enter your email"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-[#252841] border border-[#2d3150] rounded-xl px-4 py-3.5 text-white placeholder-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#00E1A1]/50 focus:border-transparent transition-all duration-300"
+                    className="w-full bg-[#252841] border border-[#2d3150] rounded-xl px-4 py-3.5 text-white placeholder-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#FF6000]/50 focus:border-transparent transition-all duration-300"
                     required
                   />
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#00E1A1]/5 to-[#03ee80]/5 pointer-events-none"></div>
+                  <div className="absolute inset-0 rounded-xl bg-[#FF6000]/5 pointer-events-none"></div>
                 </div>
               </div>
 
@@ -130,7 +130,7 @@ const Login = () => {
                   </label>
                   <button
                     type="button"
-                    className="text-xs text-[#00E1A1] hover:text-[#03ee80] transition-colors"
+                    className="text-xs text-[#FF6000] hover:text-[#FF6000]/80 transition-colors"
                   >
                     Forgot password?
                   </button>
@@ -141,21 +141,21 @@ const Login = () => {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#252841] border border-[#2d3150] rounded-xl px-4 py-3.5 text-white placeholder-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#00E1A1]/50 focus:border-transparent transition-all duration-300"
+                    className="w-full bg-[#252841] border border-[#2d3150] rounded-xl px-4 py-3.5 text-white placeholder-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#FF6000]/50 focus:border-transparent transition-all duration-300"
                     required
                   />
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#00E1A1]/5 to-[#03ee80]/5 pointer-events-none"></div>
+                  <div className="absolute inset-0 rounded-xl bg-[#FF6000]/5 pointer-events-none"></div>
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-[#00E1A1] to-[#03ee80] hover:from-[#00d191] hover:to-[#02db78] text-black font-semibold py-3.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed shadow-lg shadow-[#00E1A1]/20"
+                className="w-full bg-[#FF6000] hover:bg-[#FF6000]/90 text-white font-semibold py-3.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed shadow-lg shadow-[#FF6000]/20"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin mr-2"></div>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
                     Signing In...
                   </div>
                 ) : (
@@ -178,10 +178,10 @@ const Login = () => {
                     placeholder="Choose a username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-[#252841] border border-[#2d3150] rounded-xl px-4 py-3.5 text-white placeholder-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#00E1A1]/50 focus:border-transparent transition-all duration-300"
+                    className="w-full bg-[#252841] border border-[#2d3150] rounded-xl px-4 py-3.5 text-white placeholder-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#FF6000]/50 focus:border-transparent transition-all duration-300"
                     required
                   />
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#00E1A1]/5 to-[#03ee80]/5 pointer-events-none"></div>
+                  <div className="absolute inset-0 rounded-xl bg-[#FF6000]/5 pointer-events-none"></div>
                 </div>
               </div>
 
@@ -195,10 +195,10 @@ const Login = () => {
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#252841] border border-[#2d3150] rounded-xl px-4 py-3.5 text-white placeholder-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#00E1A1]/50 focus:border-transparent transition-all duration-300"
+                    className="w-full bg-[#252841] border border-[#2d3150] rounded-xl px-4 py-3.5 text-white placeholder-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#FF6000]/50 focus:border-transparent transition-all duration-300"
                     required
                   />
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#00E1A1]/5 to-[#03ee80]/5 pointer-events-none"></div>
+                  <div className="absolute inset-0 rounded-xl bg-[#FF6000]/5 pointer-events-none"></div>
                 </div>
               </div>
 
@@ -212,10 +212,10 @@ const Login = () => {
                     placeholder="Create a strong password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#252841] border border-[#2d3150] rounded-xl px-4 py-3.5 text-white placeholder-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#00E1A1]/50 focus:border-transparent transition-all duration-300"
+                    className="w-full bg-[#252841] border border-[#2d3150] rounded-xl px-4 py-3.5 text-white placeholder-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#FF6000]/50 focus:border-transparent transition-all duration-300"
                     required
                   />
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#00E1A1]/5 to-[#03ee80]/5 pointer-events-none"></div>
+                  <div className="absolute inset-0 rounded-xl bg-[#FF6000]/5 pointer-events-none"></div>
                 </div>
                 <p className="text-xs text-[#6b7a99] mt-2">
                   Use 8+ characters with a mix of letters, numbers & symbols
@@ -226,21 +226,21 @@ const Login = () => {
                 <input
                   type="checkbox"
                   id="terms"
-                  className="w-4 h-4 bg-[#252841] border-[#2d3150] rounded focus:ring-[#00E1A1] focus:ring-2"
+                  className="w-4 h-4 bg-[#252841] border-[#2d3150] rounded focus:ring-[#FF6000] focus:ring-2"
                   required
                 />
                 <label htmlFor="terms" className="ml-2 text-sm text-[#a1b0cc]">
                   I agree to the{" "}
                   <button
                     type="button"
-                    className="text-[#00E1A1] hover:text-[#03ee80] transition-colors"
+                    className="text-[#FF6000] hover:text-[#FF6000]/80 transition-colors"
                   >
                     Terms of Service
                   </button>{" "}
                   and{" "}
                   <button
                     type="button"
-                    className="text-[#00E1A1] hover:text-[#03ee80] transition-colors"
+                    className="text-[#FF6000] hover:text-[#FF6000]/80 transition-colors"
                   >
                     Privacy Policy
                   </button>
@@ -250,11 +250,11 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-[#00E1A1] to-[#03ee80] hover:from-[#00d191] hover:to-[#02db78] text-black font-semibold py-3.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed shadow-lg shadow-[#00E1A1]/20"
+                className="w-full bg-[#FF6000] hover:bg-[#FF6000]/90 text-white font-semibold py-3.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed shadow-lg shadow-[#FF6000]/20"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin mr-2"></div>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
                     Creating Account...
                   </div>
                 ) : (
